@@ -1,0 +1,31 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /CHHMS/
+    
+    # Prevent direct access to sensitive files
+    RewriteRule ^config/ - [F]
+    RewriteRule ^includes/ - [F]
+    
+    # Allow existing files and directories
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "no-referrer-when-downgrade"
+</IfModule>
+
+# Disable directory listing
+<IfModule mod_autoindex.c>
+    Options -Indexes
+</IfModule>
+
+# Deny access to sensitive files
+<FilesMatch "\.(env|ini|log|sql)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

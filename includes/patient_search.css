@@ -1,0 +1,188 @@
+/* Patient Search Component CSS */
+.patient-search-container {
+    position: relative;
+    width: 100%;
+}
+
+.patient-search-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.patient-search-input:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.patient-search-input.has-results {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom-color: #ddd;
+}
+
+.patient-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.patient-search-result-item {
+    padding: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.patient-search-result-item:hover,
+.patient-search-result-item.selected {
+    background-color: #e3f2fd;
+}
+
+.patient-search-result-item:last-child {
+    border-bottom: none;
+}
+
+.patient-result-name {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.25rem;
+    font-size: 0.95rem;
+}
+
+.patient-result-details {
+    display: flex;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+    color: #666;
+    flex-wrap: wrap;
+}
+
+.patient-result-badge {
+    background: #f8f9fa;
+    padding: 0.125rem 0.5rem;
+    border-radius: 4px;
+    white-space: nowrap;
+    border: 1px solid #e9ecef;
+}
+
+.patient-result-nic {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.patient-result-clinic {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.patient-result-hospital {
+    background: #e8f5e8;
+    color: #2e7d32;
+}
+
+.patient-result-nursing {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.patient-search-no-results {
+    padding: 1rem;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+.patient-search-error {
+    padding: 1rem;
+    text-align: center;
+    color: #e74c3c;
+    background: #fdf2f2;
+}
+
+.patient-search-loading {
+    padding: 1rem;
+    text-align: center;
+    color: #666;
+    background: #f8f9fa;
+}
+
+/* Selected patient display */
+.selected-patient-display {
+    background: linear-gradient(135deg, #e8f5e8, #f1f8e9);
+    border: 2px solid #4caf50;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 0.5rem;
+    display: none;
+}
+
+.selected-patient-display.show {
+    display: block;
+}
+
+.selected-patient-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.selected-patient-details h4 {
+    margin: 0;
+    color: #2e7d32;
+    font-size: 1.1rem;
+}
+
+.selected-patient-details p {
+    margin: 0.25rem 0 0 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.clear-selection-btn {
+    background: #f44336;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.3s ease;
+}
+
+.clear-selection-btn:hover {
+    background: #d32f2f;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .patient-result-details {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .patient-search-result-item {
+        padding: 0.75rem;
+    }
+    
+    .selected-patient-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+}
