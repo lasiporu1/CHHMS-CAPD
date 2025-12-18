@@ -197,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </head>
 <body>
     <div class="navbar">
-        <h1>🏥 Patient Management System</h1>
+        <h1>🏥 Woard &amp; Clinic Management System</h1>
         <div class="nav-links">
             <a href="../../index.php">Dashboard</a>
             <a href="nursing_list.php">Nursing Officers</a>

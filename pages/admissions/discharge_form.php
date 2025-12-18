@@ -97,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 WHERE admission_id = $admission_id";
         
         if ($conn->query($sql) === TRUE) {
-            // If discharge status is Death, update patient master file
+            // If discharge status is Death, update patient master file and close all medicines
             if ($discharge_status == 'Death') {
                 $patient_id = $admission['patient_id'];
                 $update_patient = "UPDATE patients SET 
@@ -106,6 +106,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                    death_notes = '$discharge_notes'
                                    WHERE patient_id = $patient_id";
                 $conn->query($update_patient);
+                
+                // Automatically close all active medicines for this patient
+                $close_medicines_sql = "UPDATE medicines SET 
+                                       end_date = '$discharge_date',
+                                       status = 'Discontinued'
+                                       WHERE patient_id = $patient_id 
+                                       AND (status = 'Active' OR end_date IS NULL OR end_date > '$discharge_date')";
+                $conn->query($close_medicines_sql);
             }
             
             header("Location: admission_view.php?id=$admission_id");

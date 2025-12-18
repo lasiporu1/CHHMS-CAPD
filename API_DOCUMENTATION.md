@@ -1,7 +1,7 @@
-# Hospital Patient Management System - API Documentation
+# Woard & Clinic Management System - API Documentation
 
 ## Overview
-This document outlines the database structure and available functionalities of the Hospital Patient Management System.
+This document outlines the database structure and available functionalities of the Woard & Clinic Management System.
 
 ## Database Tables
 

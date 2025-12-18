@@ -7,6 +7,12 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Get current user role
+$current_user_sql = "SELECT user_role FROM users WHERE user_id = {$_SESSION['user_id']}";
+$current_user_result = $conn->query($current_user_sql);
+$current_user = $current_user_result->fetch_assoc();
+$is_admin = ($current_user['user_role'] == 'Admin');
+
 // Delete nursing officer if requested
 if (isset($_GET['delete'])) {
     $id = $conn->real_escape_string($_GET['delete']);
@@ -150,7 +156,7 @@ $result = $conn->query($sql);
 </head>
 <body>
     <div class="navbar">
-        <h1>🏥 Patient Management System</h1>
+        <h1>🏥 Woard &amp; Clinic Management System</h1>
         <div class="nav-links">
             <a href="../../index.php">Dashboard</a>
             <a href="../../logout.php">Logout</a>
@@ -187,7 +193,9 @@ $result = $conn->query($sql);
                                 <td>
                                     <div class="btn-group">
                                         <a href="nursing_form.php?edit=<?php echo $nursing['nursing_id']; ?>" class="btn btn-warning">Edit</a>
-                                        <a href="nursing_list.php?delete=<?php echo $nursing['nursing_id']; ?>" class="btn btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
+                                        <?php if ($is_admin): ?>
+                                            <a href="nursing_list.php?delete=<?php echo $nursing['nursing_id']; ?>" class="btn btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>

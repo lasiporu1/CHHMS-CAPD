@@ -362,7 +362,6 @@ function viewPatientDetailHistory(patientId) {
 
 // Handle patient selection from autocomplete
 function handlePatientSelect(patient) {
-    console.log('Patient selected:', patient);
     window.location.href = 'patient_history_detail_report.php?patient_id=' + patient.patient_id;
 }
 

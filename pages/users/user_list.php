@@ -7,8 +7,14 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-// Delete user if requested
-if (isset($_GET['delete'])) {
+// Get current user role
+$current_user_sql = "SELECT user_role FROM users WHERE user_id = {$_SESSION['user_id']}";
+$current_user_result = $conn->query($current_user_sql);
+$current_user = $current_user_result->fetch_assoc();
+$is_admin = ($current_user['user_role'] == 'Admin');
+
+// Delete user if requested (only for Admin)
+if (isset($_GET['delete']) && $is_admin) {
     $id = $conn->real_escape_string($_GET['delete']);
     $sql = "DELETE FROM users WHERE user_id = $id";
     if ($conn->query($sql) === TRUE) {
@@ -17,7 +23,12 @@ if (isset($_GET['delete'])) {
     }
 }
 
-$sql = "SELECT * FROM users ORDER BY created_at DESC";
+// Get users - if not admin, filter out admin users
+if ($is_admin) {
+    $sql = "SELECT * FROM users ORDER BY created_at DESC";
+} else {
+    $sql = "SELECT * FROM users WHERE user_role != 'Admin' ORDER BY created_at DESC";
+}
 $result = $conn->query($sql);
 ?>
 <!DOCTYPE html>
@@ -152,7 +163,7 @@ $result = $conn->query($sql);
 </head>
 <body>
     <div class="navbar">
-        <h1>🏥 Patient Management System</h1>
+        <h1>🏥 Woard &amp; Clinic Management System</h1>
         <div class="nav-links">
             <a href="../../index.php">Dashboard</a>
             <a href="../../logout.php">Logout</a>
@@ -189,7 +200,9 @@ $result = $conn->query($sql);
                                 <td>
                                     <div class="btn-group">
                                         <a href="user_form.php?edit=<?php echo $user['user_id']; ?>" class="btn btn-warning">Edit</a>
-                                        <a href="user_list.php?delete=<?php echo $user['user_id']; ?>" class="btn btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
+                                        <?php if ($is_admin): ?>
+                                            <a href="user_list.php?delete=<?php echo $user['user_id']; ?>" class="btn btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>

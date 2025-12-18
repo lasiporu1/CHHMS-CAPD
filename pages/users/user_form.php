@@ -7,6 +7,12 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Get current user role
+$current_user_sql = "SELECT user_role FROM users WHERE user_id = {$_SESSION['user_id']}";
+$current_user_result = $conn->query($current_user_sql);
+$current_user = $current_user_result->fetch_assoc();
+$is_admin = ($current_user['user_role'] == 'Admin');
+
 $user_id = $username = $email = $user_role = '';
 $password = '';
 $error = '';
@@ -35,6 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     if (empty($username) || empty($email) || empty($user_role)) {
         $error = "All fields are required!";
+    } elseif (!$is_admin && $user_role == 'Admin') {
+        $error = "You do not have permission to create Admin users!";
     } else {
         if ($user_id) {
             // Update user
@@ -207,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </head>
 <body>
     <div class="navbar">
-        <h1>🏥 Patient Management System</h1>
+        <h1>🏥 Woard &amp; Clinic Management System</h1>
         <div class="nav-links">
             <a href="../../index.php">Dashboard</a>
             <a href="user_list.php">Users</a>
@@ -251,10 +259,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <label for="user_role">User Role</label>
                     <select id="user_role" name="user_role" required>
                         <option value="">Select Role</option>
-                        <option value="Admin" <?php echo $user_role == 'Admin' ? 'selected' : ''; ?>>Admin</option>
-                        <option value="Doctor" <?php echo $user_role == 'Doctor' ? 'selected' : ''; ?>>Doctor</option>
-                        <option value="Nursing Officer" <?php echo $user_role == 'Nursing Officer' ? 'selected' : ''; ?>>Nursing Officer</option>
-                        <option value="Receptionist" <?php echo $user_role == 'Receptionist' ? 'selected' : ''; ?>>Receptionist</option>
+                        <?php if ($is_admin): ?>
+                            <option value="Admin" <?php echo $user_role == 'Admin' ? 'selected' : ''; ?>>Admin</option>
+                        <?php endif; ?>
+                        <option value="User" <?php echo $user_role == 'User' ? 'selected' : ''; ?>>User</option>
                     </select>
                 </div>
                 

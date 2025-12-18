@@ -1,4 +1,4 @@
-# Hospital Patient Management System - Installation Checklist
+# Woard & Clinic Management System - Installation Checklist
 
 ## Pre-Installation Requirements
 

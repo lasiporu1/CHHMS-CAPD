@@ -15,6 +15,7 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 
 $investigation_id = $conn->real_escape_string($_GET['id']);
 $admission_id = isset($_GET['admission_id']) ? $conn->real_escape_string($_GET['admission_id']) : null;
+$admission_number = isset($_GET['admission_number']) ? $conn->real_escape_string($_GET['admission_number']) : null;
 
 // Fetch investigation details
 $sql = "SELECT i.*, 
@@ -30,7 +31,13 @@ $sql = "SELECT i.*,
 $result = $conn->query($sql);
 
 if ($result->num_rows == 0) {
-    header("Location: investigations.php" . ($admission_id ? "?admission_id=$admission_id" : ""));
+    $loc = "investigations.php";
+    if ($admission_number) {
+        $loc .= "?admission_number=" . urlencode($admission_number);
+    } elseif ($admission_id) {
+        $loc .= "?admission_id=" . $admission_id;
+    }
+    header("Location: " . $loc);
     exit();
 }
 
@@ -487,8 +494,8 @@ if (!$admission_id) {
             
             <!-- Action Buttons -->
             <div class="btn-group">
-                <a href="investigation_form.php?edit=<?php echo $investigation_id; ?>&admission_id=<?php echo $admission_id; ?>" class="btn btn-warning">✏️ Edit Investigation</a>
-                <a href="investigations.php?admission_id=<?php echo $admission_id; ?>" class="btn btn-secondary">← Back to Investigations</a>
+                <a href="investigation_form.php?edit=<?php echo $investigation_id; ?>&admission_id=<?php echo $admission_id; ?><?php if (!empty($admission_number)) echo '&admission_number='.urlencode($admission_number); ?>" class="btn btn-warning">✏️ Edit Investigation</a>
+                <a href="investigations.php?admission_id=<?php echo $admission_id; ?><?php if (!empty($admission_number)) echo '&admission_number='.urlencode($admission_number); ?>" class="btn btn-secondary">← Back to Investigations</a>
                 <a href="admission_view.php?id=<?php echo $admission_id; ?>" class="btn btn-primary">👁️ View Admission</a>
             </div>
         </div>

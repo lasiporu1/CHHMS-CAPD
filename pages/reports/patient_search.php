@@ -247,17 +247,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             searchTimeout = setTimeout(function() {
-                console.log('Searching for:', searchTerm);
                 fetch(`patient_search_ajax.php?search_term=${encodeURIComponent(searchTerm)}`)
                     .then(response => {
-                        console.log('Response status:', response.status);
+                        // response status handled below
                         if (!response.ok) {
                             throw new Error('Network response was not ok');
                         }
                         return response.json();
                     })
                     .then(patients => {
-                        console.log('Patients found:', patients);
+                        // patients processed below
                         if (patients.error) {
                             console.error('Server error:', patients.error);
                             if (searchResults) {

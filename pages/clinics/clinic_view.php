@@ -1,18 +1,9 @@
 <?php
-include '../../config/db.php';
-session_start();
-
-if (!isset($_SESSION['user_id'])) {
-    header("Location: ../../login.php");
-    exit();
-}
-
-$clinic_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-
-if ($clinic_id == 0) {
-    header("Location: clinic_list.php");
-    exit();
-}
+// CAPD Clinic module removed
+include_once '../../includes/header.php';
+echo '<div class="container"><div class="card"><h3>CAPD Clinic Module Removed</h3><p>This module has been removed from the application.</p><a href="../../index.php" class="btn btn-secondary">← Back to Dashboard</a></div></div>';
+include_once '../../includes/footer.php';
+exit();
 
 // Create clinic_appointments table if it doesn't exist
 $create_appointments_table = "CREATE TABLE IF NOT EXISTS clinic_appointments (

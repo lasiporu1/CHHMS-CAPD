@@ -387,7 +387,17 @@ if (!empty($admission['admission_date'])) {
             <div class="patient-info">
                 <h2>👤 <?php echo htmlspecialchars($admission['calling_name']); ?></h2>
                 <p style="color: #666; font-size: 1.1rem;"><?php echo htmlspecialchars($admission['full_name']); ?></p>
-                <p style="color: #888;">Admission ID: #<?php echo $admission['admission_id']; ?></p>
+                <p style="color: #888;">Admission ID: #<?php echo $admission['admission_id']; ?>
+                <?php
+                // Show death date if patient is deceased
+                $death_q = $conn->query("SELECT patient_status, death_date FROM patients WHERE patient_id = " . intval($admission['patient_id']));
+                if ($death_q && $death_row = $death_q->fetch_assoc()) {
+                    if (isset($death_row['patient_status']) && strtolower($death_row['patient_status']) === 'deceased' && !empty($death_row['death_date'])) {
+                        echo '<span style="color:#c0392b;font-size:0.85rem;font-weight:bold;margin-left:10px;">Death: ' . htmlspecialchars(date('Y-m-d', strtotime($death_row['death_date']))) . '</span>';
+                    }
+                }
+                ?>
+                </p>
             </div>
             <div class="admission-status status-<?php echo strtolower($admission['admission_status']); ?>">
                 <?php echo $admission['admission_status']; ?>
@@ -438,6 +448,10 @@ if (!empty($admission['admission_date'])) {
                     🏥 Admission Details
                 </div>
                 <div class="card-body">
+                    <div class="info-row">
+                        <span class="info-label">BHT Number:</span>
+                        <span class="info-value"><?php echo $admission['bht_number'] ? htmlspecialchars($admission['bht_number']) : 'N/A'; ?></span>
+                    </div>
                     <div class="info-row">
                         <span class="info-label">Admission Reason:</span>
                         <span class="info-value"><?php echo htmlspecialchars($admission['reason_name']); ?></span>

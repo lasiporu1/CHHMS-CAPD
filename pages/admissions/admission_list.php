@@ -2,6 +2,41 @@
 include '../../config/db.php';
 session_start();
 
+// AJAX search handler for admissions (for search box)
+if (isset($_GET['search_admissions']) && $_GET['search_admissions'] == '1') {
+    header('Content-Type: application/json');
+    $search_term = isset($_GET['search_term']) ? $conn->real_escape_string($_GET['search_term']) : '';
+    $results = [];
+    if ($search_term && strlen($search_term) >= 2) {
+        // Show all patients, regardless of death status
+        $sql = "SELECT wa.admission_id, p.patient_id, p.calling_name, p.full_name, p.nic, p.hospital_number, p.clinic_number, ar.reason_name, wa.ward_bed
+                FROM ward_admissions wa
+                INNER JOIN (
+                    SELECT patient_id, MAX(admission_date) AS max_date, MAX(admission_time) AS max_time
+                    FROM ward_admissions
+                    GROUP BY patient_id
+                ) latest ON wa.patient_id = latest.patient_id AND wa.admission_date = latest.max_date AND wa.admission_time = latest.max_time
+                LEFT JOIN patients p ON wa.patient_id = p.patient_id
+                LEFT JOIN admission_reasons ar ON wa.admission_reason_id = ar.reason_id
+                WHERE (p.calling_name LIKE '%$search_term%' OR p.full_name LIKE '%$search_term%' OR p.nic LIKE '%$search_term%' 
+                       OR p.hospital_number LIKE '%$search_term%' OR p.clinic_number LIKE '%$search_term%')
+                ORDER BY wa.admission_date DESC, wa.admission_time DESC
+                LIMIT 20";
+        $query = $conn->query($sql);
+        if ($query) {
+            $seen_patients = [];
+            while ($row = $query->fetch_assoc()) {
+                if (!in_array($row['patient_id'], $seen_patients)) {
+                    $results[] = $row;
+                    $seen_patients[] = $row['patient_id'];
+                }
+            }
+        }
+    }
+    echo json_encode($results);
+    exit();
+}
+
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../../login.php");
     exit();
@@ -155,8 +190,14 @@ if (!$conn->query($create_beds_table)) {
     die("Error creating ward_beds table: " . $conn->error);
 }
 
-// Delete admission if requested
-if (isset($_GET['delete'])) {
+// Get current user role
+$current_user_sql = "SELECT user_role FROM users WHERE user_id = {$_SESSION['user_id']}";
+$current_user_result = $conn->query($current_user_sql);
+$current_user = $current_user_result->fetch_assoc();
+$is_admin = ($current_user['user_role'] == 'Admin');
+
+// Delete admission if requested (only for Admin)
+if (isset($_GET['delete']) && $is_admin) {
     $id = $conn->real_escape_string($_GET['delete']);
     $sql = "DELETE FROM ward_admissions WHERE admission_id = $id";
     if ($conn->query($sql) === TRUE) {
@@ -369,11 +410,13 @@ $result = $conn->query($sql);
         }
         
         .search-box input {
-            padding: 0.75rem;
+            padding: 0.7rem 1rem;
             border: 2px solid #e9ecef;
             border-radius: 8px;
             flex: 1;
-            font-size: 1rem;
+            font-size: 1.05rem;
+            min-width: 280px;
+            max-width: 450px;
             transition: all 0.3s ease;
             background: #f8f9fa;
         }
@@ -582,16 +625,100 @@ $result = $conn->query($sql);
         </div>
         
         <div class="search-section">
-            <form style="margin: 0;">
-                <div class="search-box">
-                    <input type="text" name="search" placeholder="🔍 Search by patient name, NIC, Hospital Number, reason, bed..." value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
-                    <button type="submit" class="btn btn-primary">🔍 Search</button>
-                    <?php if (!empty($search)): ?>
-                        <a href="admission_list.php" class="btn btn-secondary">✖️ Clear</a>
-                    <?php endif; ?>
-                </div>
-            </form>
+            <div style="position:relative; max-width: 480px; margin: 0 auto;">
+                <form class="filter-form" onsubmit="return false;">
+                    <div class="filter-row search-box">
+                        <input id="admissionSearchTerm" type="text" placeholder="Search admission by patient name, NIC, hospital number, reason, bed...">
+                        <button id="admissionClearBtn" class="btn btn-primary" type="button">Clear</button>
+                    </div>
+                </form>
+                <div id="admissionSearchResults" class="results"></div>
+            </div>
         </div>
+        <style>
+        #admissionSearchResults {
+            margin-top: 0;
+            max-height: 350px;
+            overflow-y: auto;
+            background: #fff;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 4px 24px rgba(44,62,80,0.12);
+            border: 1px solid #e9ecef;
+            border-top: none;
+            padding: 0.5rem 0;
+            z-index: 100;
+            position: absolute;
+            width: 100%;
+            min-width: 0;
+            top: 100%;
+            left: 0;
+        }
+        .autocomplete-card {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
+            text-decoration: none;
+            color: #222;
+        }
+        .autocomplete-card:last-child {
+            border-bottom: none;
+        }
+        .autocomplete-card:hover {
+            background: #f5faff;
+        }
+        .autocomplete-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .autocomplete-sub {
+            font-size: 0.98rem;
+            color: #555;
+        }
+        .autocomplete-meta {
+            font-size: 0.88rem;
+            color: #888;
+            margin-top: 0.1rem;
+        }
+        .muted {
+            color: #aaa;
+            padding: 0.75rem 1.25rem;
+        }
+        </style>
+        <script>
+        const admissionSearchInput = document.getElementById('admissionSearchTerm');
+        const admissionResults = document.getElementById('admissionSearchResults');
+        let admissionTo;
+        // Position results absolutely below the input
+        // No need to set position absolute in JS, handled by CSS and new wrapper
+        admissionSearchInput.addEventListener('input', ()=>{
+            clearTimeout(admissionTo);
+            const t = admissionSearchInput.value.trim();
+            if (!t || t.length<2) { admissionResults.innerHTML=''; return; }
+            admissionTo = setTimeout(()=>{
+                fetch(`admission_list.php?search_admissions=1&search_term=${encodeURIComponent(t)}`)
+                    .then(r=>r.json())
+                    .then(data=>{
+                        if (!data || data.length==0) { admissionResults.innerHTML='<div class="muted">No patients found</div>'; return; }
+                        admissionResults.innerHTML = data.map(a=>{
+                            return `<a class="autocomplete-card" data-id="${a.admission_id}" href="?search=${encodeURIComponent(a.calling_name)}">
+                                <div class="autocomplete-title">${escapeHtml(a.calling_name)} <span style="font-weight:400; color:#888;">(${escapeHtml(a.full_name)})</span></div>
+                                <div class="autocomplete-sub">NIC: <b>${escapeHtml(a.nic)}</b> &nbsp;|&nbsp; PHN: <b>${escapeHtml(a.hospital_number||'-')}</b></div>
+                                <div class="autocomplete-meta">Reason: ${escapeHtml(a.reason_name||'-')} &nbsp;|&nbsp; Bed: ${escapeHtml(a.ward_bed||'-')}</div>
+                            </a>`;
+                        }).join('');
+                        admissionResults.scrollTop = 0;
+                    })
+                    .catch(err=>{ console.error(err); admissionResults.innerHTML='<div class="muted">Search error</div>'; });
+            },250);
+        });
+        document.getElementById('admissionClearBtn').addEventListener('click', ()=>{ admissionSearchInput.value=''; admissionResults.innerHTML=''; });
+        function escapeHtml(s){ if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        </script>
         
         <div class="data-section">
             <div class="section-header" style="margin-bottom: 1.5rem;">
@@ -615,12 +742,36 @@ $result = $conn->query($sql);
                         </thead>
                         <tbody>
                             <?php while ($admission = $result->fetch_assoc()): ?>
-                                <tr>
+                                <?php
+                                $death_row = false;
+                                if (isset($admission['patient_id'])) {
+                                    $patient_id = $admission['patient_id'];
+                                    $patient_q = $conn->query("SELECT patient_status FROM patients WHERE patient_id = " . intval($patient_id));
+                                    if ($patient_q && $patient_row = $patient_q->fetch_assoc()) {
+                                        if (isset($patient_row['patient_status']) && strtolower($patient_row['patient_status']) === 'deceased') {
+                                            $death_row = true;
+                                        }
+                                    }
+                                }
+                                ?>
+                                <tr<?php if ($death_row) echo ' style="background: #ffeaea !important;"'; ?>>
                                     <td><span style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: 600;">#<?php echo str_pad($admission['admission_id'], 4, '0', STR_PAD_LEFT); ?></span></td>
                                     <td>
                                         <div style="font-weight: 600; color: #2c3e50;"><?php echo $admission['calling_name']; ?></div>
                                         <div style="font-size: 0.875rem; color: #7f8c8d;"><?php echo $admission['full_name']; ?></div>
                                         <div style="font-size: 0.8rem; color: #999;">NIC: <?php echo $admission['nic']; ?></div>
+                                        <?php
+                                        // Show death date if patient is deceased
+                                        if (isset($admission['patient_id'])) {
+                                            $patient_id = $admission['patient_id'];
+                                            $patient_q = $conn->query("SELECT patient_status, death_date FROM patients WHERE patient_id = " . intval($patient_id));
+                                            if ($patient_q && $patient_row = $patient_q->fetch_assoc()) {
+                                                if (isset($patient_row['patient_status']) && strtolower($patient_row['patient_status']) === 'deceased' && !empty($patient_row['death_date'])) {
+                                                    echo '<div style="color:#c0392b;font-size:0.75rem;margin-top:2px;">Death: ' . htmlspecialchars(date('Y-m-d', strtotime($patient_row['death_date']))) . '</div>';
+                                                }
+                                            }
+                                        }
+                                        ?>
                                     </td>
                                     <td style="color: #555; font-weight: 500;"><?php echo $admission['reason_name']; ?></td>
                                     <td>
@@ -680,7 +831,9 @@ $result = $conn->query($sql);
                                     <td>
                                         <div class="btn-group">
                                             <a href="admission_view.php?id=<?php echo $admission['admission_id']; ?>" class="btn btn-info btn-sm" title="View">👁️</a>
-                                            <a href="delete_admission.php?id=<?php echo $admission['admission_id']; ?>" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete admission #<?php echo str_pad($admission['admission_id'], 4, '0', STR_PAD_LEFT); ?>?');">🗑️</a>
+                                            <?php if ($is_admin): ?>
+                                                <a href="delete_admission.php?id=<?php echo $admission['admission_id']; ?>" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete admission #<?php echo str_pad($admission['admission_id'], 4, '0', STR_PAD_LEFT); ?>?');">🗑️</a>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>

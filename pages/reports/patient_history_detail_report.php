@@ -86,6 +86,19 @@ if ($patient_result->num_rows == 0) {
 
 $patient = $patient_result->fetch_assoc();
 
+// Get counselling history for this patient
+$counselling_sql = "SELECT cs.*, no1.nursing_name AS nurse1, no2.nursing_name AS nurse2, no3.nursing_name AS nurse3
+    FROM counselling_status cs
+    LEFT JOIN nursing_officers no1 ON cs.first_nursing_officer_id = no1.nursing_id
+    LEFT JOIN nursing_officers no2 ON cs.second_nursing_officer_id = no2.nursing_id
+    LEFT JOIN nursing_officers no3 ON cs.third_nursing_officer_id = no3.nursing_id
+    WHERE cs.patient_id = ?";
+$stmt_counselling = $conn->prepare($counselling_sql);
+$stmt_counselling->bind_param("i", $patient_id);
+$stmt_counselling->execute();
+$counselling_result = $stmt_counselling->get_result();
+$counselling = $counselling_result->fetch_assoc();
+
 // Get comprehensive data for all admissions with associated investigations and medicines
 $comprehensive_query = "SELECT 
     wa.admission_id,
@@ -292,6 +305,46 @@ include '../../includes/header.php';
             </div>
         </div>
     </div>
+
+    <!-- Counselling History Section -->
+    <?php if ($counselling): ?>
+    <div class="report-section">
+        <div class="section-header">
+            <h2>🗣️ Counselling History</h2>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Session</th>
+                    <th>Date</th>
+                    <th>Nursing Officer</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>First Counselling</td>
+                    <td><?= htmlspecialchars($counselling['first_counselling_date'] ?: '-') ?></td>
+                    <td><?= htmlspecialchars($counselling['nurse1'] ?: '-') ?></td>
+                </tr>
+                <tr>
+                    <td>Second Counselling</td>
+                    <td><?= htmlspecialchars($counselling['second_counselling_date'] ?: '-') ?></td>
+                    <td><?= htmlspecialchars($counselling['nurse2'] ?: '-') ?></td>
+                </tr>
+                <tr>
+                    <td>Third Counselling</td>
+                    <td><?= htmlspecialchars($counselling['third_counselling_date'] ?: '-') ?></td>
+                    <td><?= htmlspecialchars($counselling['nurse3'] ?: '-') ?></td>
+                </tr>
+                <?php if (!empty($counselling['notes'])): ?>
+                <tr>
+                    <td colspan="3"><strong>Notes:</strong> <?= htmlspecialchars($counselling['notes']) ?></td>
+                </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php endif; ?>
 
     <!-- Detailed History Section -->
     <div class="report-section">

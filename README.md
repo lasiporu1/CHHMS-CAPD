@@ -1,6 +1,6 @@
-# Hospital Patient Management System
+# Woard & Clinic Management System
 
-A complete PHP and MySQL-based Hospital Patient Management System for managing patient records, doctors, nursing officers, users, and laboratory services.
+A complete PHP and MySQL-based Woard & Clinic Management System for managing patient records, doctors, nursing officers, users, and laboratory services.
 
 ## Features
 

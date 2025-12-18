@@ -2,6 +2,7 @@
 include '../../config/db.php';
 session_start();
 
+
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../../login.php");
     exit();
@@ -21,6 +22,7 @@ $conn->query($create_reasons_table_sql);
 $create_table_sql = "CREATE TABLE IF NOT EXISTS ward_admissions (
     admission_id INT AUTO_INCREMENT PRIMARY KEY,
     patient_id INT NOT NULL,
+    bht_number VARCHAR(50) UNIQUE,
     admission_reason_id INT NOT NULL,
     admission_date DATE NOT NULL,
     admission_time TIME NOT NULL,
@@ -56,7 +58,7 @@ $create_beds_table = "CREATE TABLE IF NOT EXISTS ward_beds (
 )";
 $conn->query($create_beds_table);
 
-$admission_id = $patient_id = $admission_reason_id = $admission_date = $admission_time = '';
+$admission_id = $patient_id = $admission_reason_id = $admission_date = $admission_time = $bht_number = '';
 $attending_doctor_id = $nursing_officer_id = $ward_bed = $admission_notes = '';
 $error = '';
 
@@ -75,6 +77,7 @@ if (isset($_GET['edit'])) {
         $admission = $result->fetch_assoc();
         $admission_id = $admission['admission_id'];
         $patient_id = $admission['patient_id'];
+        $bht_number = $admission['bht_number'];
         $admission_reason_id = $admission['admission_reason_id'];
         $admission_date = $admission['admission_date'];
         $admission_time = $admission['admission_time'];
@@ -87,6 +90,7 @@ if (isset($_GET['edit'])) {
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $patient_id = $conn->real_escape_string($_POST['patient_id']);
+    $bht_number = isset($_POST['bht_number']) ? $conn->real_escape_string($_POST['bht_number']) : '';
     $admission_reason_id = $conn->real_escape_string($_POST['admission_reason_id']);
     $admission_date = $conn->real_escape_string($_POST['admission_date']);
     $admission_time = $conn->real_escape_string($_POST['admission_time']);
@@ -100,10 +104,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $ward_bed = $conn->real_escape_string($_POST['ward_bed_manual']);
     }
     $admission_notes = $conn->real_escape_string($_POST['admission_notes']);
-    
+    // Add BHT column if not exists
+    $check_bht = "SHOW COLUMNS FROM ward_admissions LIKE 'bht_number'";
+    $col_bht = $conn->query($check_bht);
+    if ($col_bht->num_rows == 0) {
+        $conn->query("ALTER TABLE ward_admissions ADD COLUMN bht_number VARCHAR(50) UNIQUE");
+    }
     // Validation
     if (empty($patient_id)) {
         $error = "Please select a patient!";
+    } elseif (empty($bht_number)) {
+        $error = "BHT number is required!";
     } elseif (empty($admission_reason_id)) {
         $error = "Please select an admission reason!";
     } elseif (empty($admission_date)) {
@@ -126,23 +137,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (!empty($admission_id)) {
             // Update existing admission
             $sql = "UPDATE ward_admissions SET 
-                    patient_id = $patient_id,
-                    admission_reason_id = $admission_reason_id,
-                    admission_date = '$admission_date',
-                    admission_time = '$admission_time',
-                    attending_doctor_id = $attending_doctor_id,
-                    nursing_officer_id = $nursing_officer_id,
-                    ward_bed = '$ward_bed',
-                    admission_notes = '$admission_notes'
-                    WHERE admission_id = $admission_id";
+                patient_id = $patient_id,
+                bht_number = '$bht_number',
+                admission_reason_id = $admission_reason_id,
+                admission_date = '$admission_date',
+                admission_time = '$admission_time',
+                attending_doctor_id = $attending_doctor_id,
+                nursing_officer_id = $nursing_officer_id,
+                ward_bed = '$ward_bed',
+                admission_notes = '$admission_notes'
+                WHERE admission_id = $admission_id";
         } else {
             // Create new admission
             $created_by = $_SESSION['user_id'];
             $sql = "INSERT INTO ward_admissions 
-                    (patient_id, admission_reason_id, admission_date, admission_time, 
-                     attending_doctor_id, nursing_officer_id, ward_bed, admission_notes, created_by) 
-                    VALUES ($patient_id, $admission_reason_id, '$admission_date', '$admission_time', 
-                            $attending_doctor_id, $nursing_officer_id, '$ward_bed', '$admission_notes', $created_by)";
+                (patient_id, bht_number, admission_reason_id, admission_date, admission_time, 
+                 attending_doctor_id, nursing_officer_id, ward_bed, admission_notes, created_by) 
+                VALUES ($patient_id, '$bht_number', $admission_reason_id, '$admission_date', '$admission_time', 
+                    $attending_doctor_id, $nursing_officer_id, '$ward_bed', '$admission_notes', $created_by)";
         }
         
         if ($conn->query($sql) === TRUE) {
@@ -155,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 // Get patients for dropdown
-$patients_sql = "SELECT patient_id, calling_name, full_name, nic, hospital_number, clinic_number FROM patients ORDER BY calling_name";
+$patients_sql = "SELECT patient_id, calling_name, full_name, nic, hospital_number, clinic_number FROM patients WHERE patient_status IS NULL OR patient_status = '' OR patient_status != 'Deceased' ORDER BY calling_name";
 $patients_result = $conn->query($patients_sql);
 
 // Get admission reasons for dropdown
@@ -446,6 +458,10 @@ $nursing_result = $conn->query($nursing_sql);
                 
                 <div class="form-row">
                     <div class="form-group">
+                        <label for="bht_number">BHT Number *</label>
+                        <input type="text" id="bht_number" name="bht_number" value="<?php echo htmlspecialchars($bht_number); ?>" required>
+                    </div>
+                    <div class="form-group">
                         <label for="admission_reason_id">Admission Reason *</label>
                         <select id="admission_reason_id" name="admission_reason_id" required>
                             <option value="">Select Admission Reason</option>
@@ -457,6 +473,8 @@ $nursing_result = $conn->query($nursing_sql);
                             <?php endwhile; ?>
                         </select>
                     </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label for="ward_bed">Ward Bed</label>
                         <select id="ward_bed" name="ward_bed">
@@ -674,6 +692,12 @@ $nursing_result = $conn->query($nursing_sql);
                     searchResults.style.display = 'none';
                 }
             });
+
+            // Auto-generate BHT/Clinic number when date selected
+            const admissionDateInput = document.getElementById('admission_date');
+            const bhtInput = document.getElementById('bht_number');
+
+            // (BHT auto-generation removed)
         });
     </script>
 </body>

@@ -1,8 +1,8 @@
-# Hospital Patient Management System - PROJECT SUMMARY
+# Woard & Clinic Management System - PROJECT SUMMARY
 
 ## Project Overview
 
-A complete, production-ready Hospital Patient Management System built with PHP and MySQL. The system provides comprehensive management of hospital operations including users, doctors, nursing staff, patients, and laboratory services.
+A complete, production-ready Woard & Clinic Management System built with PHP and MySQL. The system provides comprehensive management of hospital operations including users, doctors, nursing staff, patients, and laboratory services.
 
 ---
 
@@ -456,7 +456,7 @@ Tested on:
 
 ## Summary
 
-This Hospital Patient Management System is a **complete, functional, and production-ready** application that fully implements all 5 requested requirements:
+This Woard & Clinic Management System is a **complete, functional, and production-ready** application that fully implements all 5 requested requirements:
 
 1. ✅ **User Management** - Complete with authentication and roles
 2. ✅ **Doctors Master File** - Full CRUD operations

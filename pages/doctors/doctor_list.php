@@ -7,8 +7,14 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-// Delete doctor if requested
-if (isset($_GET['delete'])) {
+// Get current user role
+$current_user_sql = "SELECT user_role FROM users WHERE user_id = {$_SESSION['user_id']}";
+$current_user_result = $conn->query($current_user_sql);
+$current_user = $current_user_result->fetch_assoc();
+$is_admin = ($current_user['user_role'] == 'Admin');
+
+// Delete doctor if requested (only for Admin)
+if (isset($_GET['delete']) && $is_admin) {
     $id = $conn->real_escape_string($_GET['delete']);
     $sql = "DELETE FROM doctors WHERE doctor_id = $id";
     if ($conn->query($sql) === TRUE) {
@@ -166,7 +172,7 @@ $result = $conn->query($sql);
 </head>
 <body>
     <div class="navbar">
-        <h1>🏥 Patient Management System</h1>
+        <h1>🏥 Woard &amp; Clinic Management System</h1>
         <div class="nav-links">
             <a href="../../index.php">Dashboard</a>
             <a href="../../logout.php">Logout</a>
@@ -203,7 +209,9 @@ $result = $conn->query($sql);
                                 <td>
                                     <div class="btn-group">
                                         <a href="doctor_form.php?edit=<?php echo $doctor['doctor_id']; ?>" class="btn btn-warning">Edit</a>
-                                        <a href="doctor_list.php?delete=<?php echo $doctor['doctor_id']; ?>" class="btn btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
+                                        <?php if ($is_admin): ?>
+                                            <a href="doctor_list.php?delete=<?php echo $doctor['doctor_id']; ?>" class="btn btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>

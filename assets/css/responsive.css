@@ -1,0 +1,242 @@
+/* 
+ * Responsive Design Styles for CHHMS
+ * Mobile-first approach for laptop and mobile phone compatibility
+ */
+
+/* Base responsive utilities */
+* {
+    box-sizing: border-box;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Responsive container */
+.container-fluid {
+    width: 100%;
+    padding-right: 15px;
+    padding-left: 15px;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+/* Responsive grid system */
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-right: -15px;
+    margin-left: -15px;
+}
+
+.col-12 { flex: 0 0 100%; max-width: 100%; padding: 0 15px; }
+.col-6 { flex: 0 0 50%; max-width: 50%; padding: 0 15px; }
+.col-4 { flex: 0 0 33.333%; max-width: 33.333%; padding: 0 15px; }
+.col-3 { flex: 0 0 25%; max-width: 25%; padding: 0 15px; }
+
+/* Mobile breakpoint */
+@media screen and (max-width: 768px) {
+    .col-6, .col-4, .col-3 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    
+    .col-sm-12 { flex: 0 0 100%; max-width: 100%; }
+    .col-sm-6 { flex: 0 0 50%; max-width: 50%; }
+}
+
+/* Tablet breakpoint */
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+    .col-md-12 { flex: 0 0 100%; max-width: 100%; }
+    .col-md-6 { flex: 0 0 50%; max-width: 50%; }
+    .col-md-4 { flex: 0 0 33.333%; max-width: 33.333%; }
+}
+
+/* Table responsiveness */
+.table-responsive {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media screen and (max-width: 768px) {
+    /* Card table view for mobile - transforms table to stacked cards */
+    .table-mobile-cards {
+        display: block;
+    }
+    
+    .table-mobile-cards thead {
+        display: none;
+    }
+    
+    .table-mobile-cards tbody {
+        display: block;
+    }
+    
+    .table-mobile-cards tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 1rem;
+        background: white;
+    }
+    
+    .table-mobile-cards td {
+        display: block;
+        text-align: right;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .table-mobile-cards td:last-child {
+        border-bottom: none;
+    }
+    
+    .table-mobile-cards td::before {
+        content: attr(data-label);
+        float: left;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+}
+
+/* Form responsiveness */
+@media screen and (max-width: 768px) {
+    .form-row {
+        flex-direction: column;
+    }
+    
+    .form-inline {
+        display: block !important;
+    }
+    
+    .form-inline .form-group {
+        width: 100% !important;
+        margin-bottom: 1rem;
+    }
+    
+    .form-inline .btn {
+        width: 100%;
+    }
+}
+
+/* Button groups on mobile */
+@media screen and (max-width: 768px) {
+    .btn-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .btn-group .btn {
+        width: 100%;
+        margin: 0;
+    }
+}
+
+/* Modal responsiveness */
+@media screen and (max-width: 768px) {
+    .modal {
+        padding: 1rem;
+    }
+    
+    .modal-content {
+        width: 100%;
+        margin: 0;
+    }
+}
+
+/* Touch-friendly interactive elements */
+@media (hover: none) and (pointer: coarse) {
+    /* Touch device specific styles */
+    a, button, .btn, input[type="submit"], input[type="button"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    select, input, textarea {
+        font-size: 16px; /* Prevents auto-zoom on iOS */
+    }
+}
+
+/* Landscape orientation on mobile */
+@media screen and (max-width: 768px) and (orientation: landscape) {
+    .navbar {
+        padding: 0.5rem 1rem;
+    }
+    
+    .navbar h1 {
+        font-size: 0.9rem;
+    }
+    
+    .container {
+        padding: 1rem 0.5rem;
+    }
+}
+
+/* Print styles */
+@media print {
+    .navbar,
+    .btn,
+    .mobile-menu-toggle,
+    .no-print {
+        display: none !important;
+    }
+    
+    body {
+        background: white;
+    }
+    
+    .card {
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+    
+    table {
+        page-break-inside: auto;
+    }
+    
+    tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Dark mode support (optional) */
+@media (prefers-color-scheme: dark) {
+    /* Add dark mode styles if needed in future */
+}
+
+/* Utility classes */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+
+.p-1 { padding: 0.5rem; }
+.p-2 { padding: 1rem; }
+.p-3 { padding: 1.5rem; }
+
+@media screen and (max-width: 768px) {
+    .text-mobile-center { text-align: center; }
+    .mb-mobile-2 { margin-bottom: 1rem; }
+    .p-mobile-1 { padding: 0.5rem; }
+}

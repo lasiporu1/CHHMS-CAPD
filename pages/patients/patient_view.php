@@ -7,6 +7,12 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Get current user role
+$current_user_sql = "SELECT user_role FROM users WHERE user_id = {$_SESSION['user_id']}";
+$current_user_result = $conn->query($current_user_sql);
+$current_user = $current_user_result->fetch_assoc();
+$is_admin = ($current_user['user_role'] == 'Admin');
+
 $patient = null;
 
 if (isset($_GET['id'])) {
@@ -212,7 +218,7 @@ if (!$patient) {
 </head>
 <body>
     <div class="navbar">
-        <h1>🏥 Patient Management System</h1>
+        <h1>🏥 Woard &amp; Clinic Management System</h1>
         <div class="nav-links">
             <a href="../../index.php">Dashboard</a>
             <a href="patient_list.php">Patients</a>
@@ -226,7 +232,9 @@ if (!$patient) {
                 <h2>Patient Details</h2>
                 <div>
                     <a href="patient_form.php?edit=<?php echo $patient['patient_id']; ?>" class="btn btn-primary">Edit</a>
-                    <a href="patient_list.php?delete=<?php echo $patient['patient_id']; ?>" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this patient? This action cannot be undone.');">Delete</a>
+                    <?php if ($is_admin): ?>
+                        <a href="patient_list.php?delete=<?php echo $patient['patient_id']; ?>" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this patient? This action cannot be undone.');">Delete</a>
+                    <?php endif; ?>
                     <a href="patient_list.php" class="btn btn-secondary">Back</a>
                 </div>
             </div>
@@ -299,18 +307,35 @@ if (!$patient) {
                 </div>
             </div>
             
+
             <div class="section-title">Contact Information</div>
-            
-            <div class="info-row">
-                <div class="info-item">
-                    <div class="info-item-label">Contact Number</div>
-                    <div class="info-item-value"><?php echo $patient['contact_number']; ?></div>
+            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 2rem; align-items: center; background: #f8fbfd; padding: 1.5rem 1rem 1.5rem 1rem; border-radius: 8px; margin-bottom: 0.5rem;">
+                <div>
+                    <div style="margin-bottom: 1.5rem;">
+                        <div class="info-item-label" style="font-weight:600; color:#2c3e50; margin-bottom:0.25rem;">Contact Number</div>
+                        <div class="info-item-value" style="font-size:1.1rem; color:#222;"> <?php echo $patient['contact_number']; ?> </div>
+                    </div>
+                    <div style="margin-bottom: 1.5rem;">
+                        <div class="info-item-label" style="font-weight:600; color:#2c3e50; margin-bottom:0.25rem;">Address</div>
+                        <div class="info-item-value" style="font-size:1.1rem; color:#222; white-space:pre-line; max-width:260px;"> <?php echo nl2br($patient['address']); ?> </div>
+                    </div>
+                    <div style="margin-bottom: 1.5rem;">
+                        <div class="info-item-label" style="font-weight:600; color:#2c3e50; margin-bottom:0.25rem;">MOH Office</div>
+                        <div class="info-item-value" style="font-size:1.1rem; color:#222;"> <?php echo !empty($patient['moh_office']) ? htmlspecialchars($patient['moh_office']) : 'Not Specified'; ?> </div>
+                    </div>
+                    <div>
+                        <div class="info-item-label" style="font-weight:600; color:#2c3e50; margin-bottom:0.25rem;">District</div>
+                        <div class="info-item-value" style="font-size:1.1rem; color:#222;"> <?php echo !empty($patient['district']) ? htmlspecialchars($patient['district']) : 'Not Specified'; ?> </div>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="info-item" style="margin-bottom: 1rem;">
-                <div class="info-item-label">Address</div>
-                <div class="info-item-value"><?php echo nl2br($patient['address']); ?></div>
+                <div style="text-align:center;">
+                    <div class="info-item-label" style="font-weight:600; color:#2c3e50; margin-bottom:0.5rem;">Photograph</div>
+                    <?php if (!empty($patient['photo'])): ?>
+                        <img src="../../<?php echo $patient['photo']; ?>" alt="Patient Photo" style="max-width:170px;max-height:200px;border-radius:8px;border:1px solid #ccc;box-shadow:0 2px 8px #0001;">
+                    <?php else: ?>
+                        <div style="width:170px;height:200px;display:inline-block;background:#eee;border-radius:8px;border:1px solid #ccc;"></div>
+                    <?php endif; ?>
+                </div>
             </div>
             
             <div class="section-title">Guardian Information</div>

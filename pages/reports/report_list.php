@@ -6,6 +6,8 @@ include '../../includes/header.php';
 $patient_count = $conn->query("SELECT COUNT(*) as count FROM patients")->fetch_assoc()['count'];
 $doctor_count = $conn->query("SELECT COUNT(*) as count FROM doctors")->fetch_assoc()['count'];
 $nursing_count = $conn->query("SELECT COUNT(*) as count FROM nursing_officers")->fetch_assoc()['count'];
+// Clinic patients (distinct patients with clinic admissions)
+$clinic_patient_count = $conn->query("SELECT COUNT(DISTINCT patient_id) as count FROM clinic_admissions")->fetch_assoc()['count'];
 ?>
 
 <div class="container">
@@ -21,6 +23,29 @@ $nursing_count = $conn->query("SELECT COUNT(*) as count FROM nursing_officers")-
 
     <!-- Report Cards -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 2rem;">
+        <!-- Counselling Report -->
+        <div class="card" style="background: linear-gradient(135deg, #f3e5f5 0%, #ce93d8 100%); border: none;">
+            <div style="padding: 2rem; text-align: center;">
+                <div style="background: white; border-radius: 50%; width: 80px; height: 80px; margin: 0 auto 1.5rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                    <span style="font-size: 2rem;">🗣️</span>
+                </div>
+                <h3 style="color: #8e24aa; margin-bottom: 1rem;">Counselling Report</h3>
+                <p style="color: #424242; margin-bottom: 1.5rem;">View and filter all patient counselling sessions and assigned nursing officers.</p>
+                <a href="counselling_report.php" class="btn btn-primary" style="width: 100%; background: #8e24aa; border-color: #8e24aa;">🗣️ View Counselling Report</a>
+            </div>
+        </div>
+
+        <!-- Detail Counselling Report -->
+        <div class="card" style="background: linear-gradient(135deg, #ede7f6 0%, #b39ddb 100%); border: none;">
+            <div style="padding: 2rem; text-align: center;">
+                <div style="background: white; border-radius: 50%; width: 80px; height: 80px; margin: 0 auto 1.5rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                    <span style="font-size: 2rem;">📋</span>
+                </div>
+                <h3 style="color: #5e35b1; margin-bottom: 1rem;">Detail Counselling Report</h3>
+                <p style="color: #424242; margin-bottom: 1.5rem;">Detailed counselling sessions with date range and Nursing Officer filters.</p>
+                <a href="detail_counselling_report.php" class="btn btn-primary" style="width: 100%; background: #5e35b1; border-color: #5e35b1;">📋 View Detail Counselling Report</a>
+            </div>
+        </div>
         
         <!-- Patient Reports -->
         <div class="card" style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border: none;">
@@ -127,6 +152,22 @@ $nursing_count = $conn->query("SELECT COUNT(*) as count FROM nursing_officers")-
                 </div>
                 
                 <a href="patient_detail_search.php" class="btn btn-primary" style="width: 100%; background: #2e7d32; border-color: #2e7d32;">📄 Search Detail History</a>
+            </div>
+        </div>
+
+        <!-- Clinic Patient History Detail Report -->
+        <div class="card" style="background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%); border: none;">
+            <div style="padding: 2rem; text-align: center;">
+                <div style="background: white; border-radius: 50%; width: 80px; height: 80px; margin: 0 auto 1.5rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                    <span style="font-size: 2rem;">🏥</span>
+                </div>
+                <h3 style="color: #00796b; margin-bottom: 1rem;">Clinic Patient History Report</h3>
+                <p style="color: #424242; margin-bottom: 1.5rem;">Clinic-only patient history reports using clinic admissions and admission numbers.</p>
+                <div style="background: rgba(0,121,107,0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <div style="font-size: 2rem; font-weight: bold; color: #00796b;"><?php echo $clinic_patient_count; ?></div>
+                    <div style="color: #666; font-size: 0.9rem;">Patients with Clinic Admissions</div>
+                </div>
+                <a href="clinic_patient_detail_search.php" class="btn btn-primary" style="width: 100%; background: #00796b; border-color: #00796b;">🏥 Clinic History Search</a>
             </div>
         </div>
 

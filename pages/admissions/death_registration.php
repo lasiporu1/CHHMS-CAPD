@@ -58,7 +58,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                               WHERE patient_id = $patient_id";
                 
                 if ($conn->query($update_sql) === TRUE) {
-                    $success = "Patient " . htmlspecialchars($patient['calling_name']) . " has been marked as deceased successfully!";
+                    // Automatically close all active medicines for this patient
+                    $close_medicines_sql = "UPDATE medicines SET 
+                                           end_date = '$death_date',
+                                           status = 'Discontinued'
+                                           WHERE patient_id = $patient_id 
+                                           AND (status = 'Active' OR end_date IS NULL OR end_date > '$death_date')";
+                    $conn->query($close_medicines_sql);
+                    
+                    $success = "Patient " . htmlspecialchars($patient['calling_name']) . " has been marked as deceased successfully! All active medications have been automatically closed.";
                     // Clear form
                     $patient_id = $death_date = $death_notes = '';
                     $patient_info = null;

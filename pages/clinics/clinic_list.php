@@ -69,8 +69,14 @@ if ($count == 0) {
     }
 }
 
-// Delete clinic if requested
-if (isset($_GET['delete'])) {
+// Get current user role
+$current_user_sql = "SELECT user_role FROM users WHERE user_id = {$_SESSION['user_id']}";
+$current_user_result = $conn->query($current_user_sql);
+$current_user = $current_user_result->fetch_assoc();
+$is_admin = ($current_user['user_role'] == 'Admin');
+
+// Delete clinic if requested (only for Admin)
+if (isset($_GET['delete']) && $is_admin) {
     $id = $conn->real_escape_string($_GET['delete']);
     $sql = "UPDATE clinics SET is_active = 0 WHERE clinic_id = $id";
     if ($conn->query($sql) === TRUE) {
@@ -106,24 +112,12 @@ $result = $conn->query($sql);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CAPD Clinic Management</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            margin: 0;
-        }
-        
-        .navbar {
-            background: rgba(44, 62, 80, 0.95);
-            backdrop-filter: blur(10px);
-            color: white;
+    <?php
+    // CAPD Clinic module removed
+    include_once '../../includes/header.php';
+    echo '<div class="container"><div class="card"><h3>CAPD Clinic Module Removed</h3><p>This module has been removed from the application.</p><a href="../../index.php" class="btn btn-secondary">← Back to Dashboard</a></div></div>';
+    include_once '../../includes/footer.php';
+    exit();
             padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
@@ -534,7 +528,9 @@ $result = $conn->query($sql);
                                 <a href="clinic_view.php?id=<?php echo $clinic['clinic_id']; ?>" class="btn btn-success" title="View Details">👁️</a>
                                 <a href="appointment_form.php?clinic_id=<?php echo $clinic['clinic_id']; ?>" class="btn btn-primary" title="New Appointment">📅</a>
                                 <a href="clinic_form.php?edit=<?php echo $clinic['clinic_id']; ?>" class="btn btn-warning" title="Edit">✏️</a>
-                                <a href="clinic_list.php?delete=<?php echo $clinic['clinic_id']; ?>" class="btn btn-danger" title="Deactivate" onclick="return confirm('Are you sure you want to deactivate this clinic?');">🗑️</a>
+                                <?php if ($is_admin): ?>
+                                    <a href="clinic_list.php?delete=<?php echo $clinic['clinic_id']; ?>" class="btn btn-danger" title="Deactivate" onclick="return confirm('Are you sure you want to deactivate this clinic?');">🗑️</a>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endwhile; ?>

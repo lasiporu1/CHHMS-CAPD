@@ -1,8 +1,8 @@
-# 🏥 Hospital Patient Management System - COMPLETE IMPLEMENTATION
+# 🏥 Woard & Clinic Management System - COMPLETE IMPLEMENTATION
 
 ## 📌 START HERE - Read This First!
 
-Welcome! Your Hospital Patient Management System is **fully implemented and ready to use**.
+Welcome! Your Woard & Clinic Management System is **fully implemented and ready to use**.
 
 ### What You Have
 ✅ Complete PHP/MySQL hospital management system  
@@ -439,7 +439,7 @@ This system is **production-ready** with:
 
 ## 📞 System Information
 
-- **Name**: Hospital Patient Management System
+- **Name**: Woard & Clinic Management System
 - **Version**: 1.0
 - **Created**: December 4, 2024
 - **Status**: Production Ready
@@ -480,7 +480,7 @@ For technical staff:
 
 ## 🎉 You're All Set!
 
-Your Hospital Patient Management System is complete, documented, and ready to use.
+Your Woard & Clinic Management System is complete, documented, and ready to use.
 
 ### Start Now:
 1. Open QUICK_START.md
@@ -500,6 +500,6 @@ Your Hospital Patient Management System is complete, documented, and ready to us
 
 ---
 
-**Welcome to your Hospital Patient Management System!** 🏥
+**Welcome to your Woard & Clinic Management System!** 🏥
 
 Happy healthcare management! 👨‍⚕️👩‍⚕️

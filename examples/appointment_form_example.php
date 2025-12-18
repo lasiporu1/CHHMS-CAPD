@@ -155,7 +155,7 @@ if ($_POST) {
          * This function is called when a patient is selected from the autocomplete
          */
         function handlePatientSelection(patient) {
-            console.log('Patient selected:', patient);
+            // patient selection handled — update UI below
             
             // Update the hidden patient ID field (automatically handled by the component)
             // The component creates a hidden field with name "patient_id"

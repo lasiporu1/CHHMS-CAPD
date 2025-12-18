@@ -13,6 +13,7 @@ $create_pet_table = "CREATE TABLE IF NOT EXISTS peritoneal_equilibration_test (
     patient_id INT NOT NULL,
     test_date DATE NOT NULL,
     pet_level ENUM('High', 'High Average', 'Low Average', 'Low') NOT NULL,
+    pd_status ENUM('CAPD', 'APD') DEFAULT NULL,
     d_p_creatinine DECIMAL(5,2) NULL,
     d_d0_glucose DECIMAL(5,2) NULL,
     ultrafiltration INT NULL,
@@ -45,6 +46,28 @@ $create_capd_table = "CREATE TABLE IF NOT EXISTS capd_status (
 )";
 $conn->query($create_capd_table);
 
+// Create Counselling table if it doesn't exist
+$create_counselling_table = "CREATE TABLE IF NOT EXISTS counselling_status (
+    counselling_id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_id INT NOT NULL,
+    first_counselling_date DATE NULL,
+    first_nursing_officer_id INT NULL,
+    second_counselling_date DATE NULL,
+    second_nursing_officer_id INT NULL,
+    third_counselling_date DATE NULL,
+    third_nursing_officer_id INT NULL,
+    notes TEXT NULL,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_id) REFERENCES patients(patient_id) ON DELETE CASCADE,
+    FOREIGN KEY (first_nursing_officer_id) REFERENCES nursing_officers(nursing_id) ON DELETE SET NULL,
+    FOREIGN KEY (second_nursing_officer_id) REFERENCES nursing_officers(nursing_id) ON DELETE SET NULL,
+    FOREIGN KEY (third_nursing_officer_id) REFERENCES nursing_officers(nursing_id) ON DELETE SET NULL,
+    INDEX idx_patient_created (patient_id, created_at)
+)";
+$conn->query($create_counselling_table);
+
 // Handle PET form submission
 $pet_message = '';
 $pet_message_type = '';
@@ -52,24 +75,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $patient_id = (int)$_POST['patient_id'];
     $test_date = $conn->real_escape_string($_POST['test_date']);
     $pet_level = $conn->real_escape_string($_POST['pet_level']);
+    $pd_status = isset($_POST['pd_status']) ? $conn->real_escape_string($_POST['pd_status']) : NULL;
     $d_p_creatinine = !empty($_POST['d_p_creatinine']) ? (float)$_POST['d_p_creatinine'] : 'NULL';
     $d_d0_glucose = !empty($_POST['d_d0_glucose']) ? (float)$_POST['d_d0_glucose'] : 'NULL';
     $ultrafiltration = !empty($_POST['ultrafiltration']) ? (int)$_POST['ultrafiltration'] : 'NULL';
     $notes = $conn->real_escape_string($_POST['notes']);
     $created_by = $_SESSION['user_id'];
-    
     if (is_numeric($d_p_creatinine)) {
         $d_p_creatinine = "'$d_p_creatinine'";
     }
     if (is_numeric($d_d0_glucose)) {
         $d_d0_glucose = "'$d_d0_glucose'";
     }
-    
+    $pd_status_sql = $pd_status ? "'$pd_status'" : 'NULL';
     $insert_sql = "INSERT INTO peritoneal_equilibration_test 
-                   (patient_id, test_date, pet_level, d_p_creatinine, d_d0_glucose, ultrafiltration, notes, created_by) 
-                   VALUES ($patient_id, '$test_date', '$pet_level', $d_p_creatinine, $d_d0_glucose, $ultrafiltration, '$notes', $created_by)";
-    
+                   (patient_id, test_date, pet_level, pd_status, d_p_creatinine, d_d0_glucose, ultrafiltration, notes, created_by) 
+                   VALUES ($patient_id, '$test_date', '$pet_level', $pd_status_sql, $d_p_creatinine, $d_d0_glucose, $ultrafiltration, '$notes', $created_by)";
     if ($conn->query($insert_sql)) {
+        // Update patients table with latest PD Status
+        if ($pd_status) {
+            $conn->query("UPDATE patients SET pd_status = '" . $pd_status . "' WHERE patient_id = $patient_id");
+        }
         $pet_message = "PET record added successfully!";
         $pet_message_type = 'success';
     } else {
@@ -119,8 +145,14 @@ if (isset($_GET['view_pet']) && !empty($_GET['view_pet'])) {
     }
 }
 
-// Delete patient if requested
-if (isset($_GET['delete'])) {
+// Get current user role
+$current_user_sql = "SELECT user_role FROM users WHERE user_id = {$_SESSION['user_id']}";
+$current_user_result = $conn->query($current_user_sql);
+$current_user = $current_user_result->fetch_assoc();
+$is_admin = ($current_user['user_role'] == 'Admin');
+
+// Delete patient if requested (only for Admin)
+if (isset($_GET['delete']) && $is_admin) {
     $id = $conn->real_escape_string($_GET['delete']);
     $sql = "DELETE FROM patients WHERE patient_id = $id";
     if ($conn->query($sql) === TRUE) {
@@ -221,6 +253,68 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     }
 }
 
+// Handle Counselling form submission
+$counselling_message = '';
+$counselling_message_type = '';
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'add_counselling') {
+    $patient_id = (int)$_POST['patient_id'];
+    $first_counselling_date = !empty($_POST['first_counselling_date']) ? $conn->real_escape_string($_POST['first_counselling_date']) : NULL;
+    $first_nursing_officer_id = !empty($_POST['first_nursing_officer_id']) ? (int)$_POST['first_nursing_officer_id'] : 'NULL';
+    $second_counselling_date = !empty($_POST['second_counselling_date']) ? $conn->real_escape_string($_POST['second_counselling_date']) : NULL;
+    $second_nursing_officer_id = !empty($_POST['second_nursing_officer_id']) ? (int)$_POST['second_nursing_officer_id'] : 'NULL';
+    $third_counselling_date = !empty($_POST['third_counselling_date']) ? $conn->real_escape_string($_POST['third_counselling_date']) : NULL;
+    $third_nursing_officer_id = !empty($_POST['third_nursing_officer_id']) ? (int)$_POST['third_nursing_officer_id'] : 'NULL';
+    $notes = $conn->real_escape_string($_POST['notes']);
+    $created_by = $_SESSION['user_id'];
+
+    $first_no = is_numeric($first_nursing_officer_id) ? $first_nursing_officer_id : 'NULL';
+    $second_no = is_numeric($second_nursing_officer_id) ? $second_nursing_officer_id : 'NULL';
+    $third_no = is_numeric($third_nursing_officer_id) ? $third_nursing_officer_id : 'NULL';
+
+    // Prevent duplicate entry for same patient on the same counselling date
+    if ($first_counselling_date !== NULL) {
+        $dup_check_sql = "SELECT counselling_id FROM counselling_status WHERE patient_id = $patient_id AND first_counselling_date = '$first_counselling_date' LIMIT 1";
+        $dup_res = $conn->query($dup_check_sql);
+        if ($dup_res && $dup_res->num_rows > 0) {
+            $counselling_message = "Error: A counselling entry for this patient already exists on $first_counselling_date.";
+            $counselling_message_type = 'error';
+        } else {
+            $insert_sql = "INSERT INTO counselling_status
+                       (patient_id, first_counselling_date, first_nursing_officer_id, notes, created_by)
+                       VALUES ($patient_id, ".($first_counselling_date ? "'".$first_counselling_date."'" : "NULL").", $first_no, '$notes', $created_by)";
+
+            if ($conn->query($insert_sql)) {
+                $counselling_message = 'Counselling record saved successfully!';
+                $counselling_message_type = 'success';
+            } else {
+                $counselling_message = 'Error saving counselling record: ' . $conn->error;
+                $counselling_message_type = 'error';
+            }
+        }
+    } else {
+        // If no date provided, proceed to insert as-is
+        $insert_sql = "INSERT INTO counselling_status
+                   (patient_id, first_counselling_date, first_nursing_officer_id, notes, created_by)
+                   VALUES ($patient_id, NULL, $first_no, '$notes', $created_by)";
+
+        if ($conn->query($insert_sql)) {
+            $counselling_message = 'Counselling record saved successfully!';
+            $counselling_message_type = 'success';
+        } else {
+            $counselling_message = 'Error saving counselling record: ' . $conn->error;
+            $counselling_message_type = 'error';
+        }
+    }
+}
+
+// If this was an AJAX counselling POST, return JSON so the modal can stay open
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'add_counselling' && isset($_POST['ajax'])) {
+    $resp = ['success' => $counselling_message_type == 'success', 'message' => $counselling_message];
+    header('Content-Type: application/json');
+    echo json_encode($resp);
+    exit();
+}
+
 // Handle CAPD edit
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'edit_capd') {
     $capd_id = (int)$_POST['capd_id'];
@@ -301,6 +395,79 @@ if (isset($_GET['get_capd_data']) && !empty($_GET['patient_id'])) {
     exit();
 }
 
+// Get last counselling record for patient (AJAX)
+if (isset($_GET['get_last_counselling']) && !empty($_GET['patient_id'])) {
+    $patient_id = (int)$_GET['patient_id'];
+    $sql = "SELECT * FROM counselling_status WHERE patient_id = $patient_id ORDER BY created_at DESC LIMIT 1";
+    $res = $conn->query($sql);
+    $response = ['has_record' => false];
+    if ($res && $res->num_rows > 0) {
+        $data = $res->fetch_assoc();
+        $response = [
+            'has_record' => true,
+            'first_counselling_date' => $data['first_counselling_date'],
+            'first_nursing_officer_id' => $data['first_nursing_officer_id'],
+            'second_counselling_date' => $data['second_counselling_date'],
+            'second_nursing_officer_id' => $data['second_nursing_officer_id'],
+            'third_counselling_date' => $data['third_counselling_date'],
+            'third_nursing_officer_id' => $data['third_nursing_officer_id'],
+            'notes' => $data['notes']
+        ];
+    }
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    exit();
+}
+
+// If counselling form was submitted and produced a message, reopen modal and populate fields so message is visible
+if (!empty($counselling_message)) {
+    $js_patient_id = '';
+    $js_patient_display = '';
+    if (!empty($_POST['patient_id'])) {
+        $pid = (int)$_POST['patient_id'];
+        $p_res = $conn->query("SELECT calling_name, full_name, nic, hospital_number FROM patients WHERE patient_id = $pid LIMIT 1");
+        if ($p_res && $p_res->num_rows > 0) {
+            $p = $p_res->fetch_assoc();
+            $js_patient_id = $pid;
+            $js_patient_display = $p['calling_name'] . ' (' . $p['full_name'] . ') - NIC: ' . $p['nic'] . ' - PHN: ' . ($p['hospital_number'] ?? '-');
+        }
+    }
+    $posted_date = isset($_POST['first_counselling_date']) ? $_POST['first_counselling_date'] : '';
+    $posted_no = isset($_POST['first_nursing_officer_id']) ? $_POST['first_nursing_officer_id'] : '';
+    $posted_notes = isset($_POST['notes']) ? $_POST['notes'] : '';
+    echo "<script>window.addEventListener('DOMContentLoaded', function(){ try{ const modal=document.getElementById('counsellingModal'); if(modal){ modal.classList.add('open'); modal.style.display='block'; } try{ document.getElementById('counsellingForm').reset(); }catch(e){}";
+    if ($js_patient_id) {
+        $display_json = json_encode($js_patient_display);
+        echo " try{ document.getElementById('counselling_patient_id').value = " . json_encode($js_patient_id) . "; document.getElementById('counselling_patient_name').textContent = " . $display_json . "; document.getElementById('counsellingPatientSearchSection').style.display='none'; document.getElementById('counsellingSelectedPatient').style.display='block'; }catch(e){}";
+    }
+    echo " try{ if(document.getElementById('first_counselling_date')) document.getElementById('first_counselling_date').value = " . json_encode($posted_date) . "; }catch(e){}";
+    echo " try{ if(document.getElementById('first_nursing_officer_id')) document.getElementById('first_nursing_officer_id').value = " . json_encode($posted_no) . "; }catch(e){}";
+    echo " try{ if(document.getElementById('counselling_notes')) document.getElementById('counselling_notes').value = " . json_encode($posted_notes) . "; }catch(e){}";
+    echo " }, false);</script>";
+}
+
+// Debug: find counselling records by patient NIC (AJAX)
+if (isset($_GET['find_counselling_by_nic']) && !empty($_GET['nic'])) {
+    $nic = $conn->real_escape_string($_GET['nic']);
+    $p_sql = "SELECT patient_id, calling_name, full_name FROM patients WHERE nic = '$nic' LIMIT 1";
+    $p_res = $conn->query($p_sql);
+    $out = ['found' => false];
+    if ($p_res && $p_res->num_rows > 0) {
+        $p = $p_res->fetch_assoc();
+        $pid = (int)$p['patient_id'];
+        $c_sql = "SELECT * FROM counselling_status WHERE patient_id = $pid ORDER BY created_at DESC";
+        $c_res = $conn->query($c_sql);
+        $records = [];
+        while ($r = $c_res->fetch_assoc()) {
+            $records[] = $r;
+        }
+        $out = ['found' => true, 'patient' => $p, 'records' => $records];
+    }
+    header('Content-Type: application/json');
+    echo json_encode($out);
+    exit();
+}
+
 // Get patient details for CAPD form (AJAX)
 if (isset($_GET['get_patient_details']) && !empty($_GET['patient_id'])) {
     $patient_id = (int)$_GET['patient_id'];
@@ -341,16 +508,17 @@ if (isset($_GET['get_patient_details']) && !empty($_GET['patient_id'])) {
 // Search patients for AJAX
 if (isset($_GET['search_patients']) && !empty($_GET['search_term'])) {
     $search_term = $conn->real_escape_string($_GET['search_term']);
-    $search_sql = "SELECT p.patient_id, p.calling_name, p.full_name, p.nic, p.hospital_number, p.clinic_number,
-                          wa.admission_id, wa.admission_status
-                   FROM patients p
-                   LEFT JOIN ward_admissions wa ON p.patient_id = wa.patient_id AND wa.admission_status = 'Active'
-                   WHERE p.calling_name LIKE '%$search_term%' 
-                      OR p.full_name LIKE '%$search_term%'
-                      OR p.nic LIKE '%$search_term%' 
-                      OR p.hospital_number LIKE '%$search_term%' 
-                      OR p.clinic_number LIKE '%$search_term%'
-                   ORDER BY p.calling_name LIMIT 10";
+     $search_sql = "SELECT p.patient_id, p.calling_name, p.full_name, p.nic, p.hospital_number, p.clinic_number,
+                                  wa.admission_id, wa.admission_status
+                         FROM patients p
+                         LEFT JOIN ward_admissions wa ON p.patient_id = wa.patient_id AND wa.admission_status = 'Active'
+                         WHERE (p.calling_name LIKE '%$search_term%' 
+                             OR p.full_name LIKE '%$search_term%'
+                             OR p.nic LIKE '%$search_term%' 
+                             OR p.hospital_number LIKE '%$search_term%' 
+                             OR p.clinic_number LIKE '%$search_term%')
+                            AND (p.patient_status IS NULL OR p.patient_status = '' OR p.patient_status != 'Deceased')
+                         ORDER BY p.calling_name LIMIT 10";
     $search_result = $conn->query($search_sql);
     
     $patients = array();
@@ -684,13 +852,17 @@ $result = $conn->query($sql);
         .search-item:hover {
             background-color: #f8f9fa;
         }
+        /* Ensure counselling modal only opens via JS class toggle */
+        #counsellingModal { display: none !important; }
+        #counsellingModal.open { display: block !important; }
     </style>
 </head>
 <body>
-    <div class="navbar">
-        <h1>🏥 Patient Management System</h1>
+        <div class="navbar">
+        <h1>🏥 Woard &amp; Clinic Management System</h1>
         <div class="nav-links">
             <a href="../../index.php">Dashboard</a>
+            <a href="#" style="color:#fff;font-weight:600;" onclick="openCounsellingModal(); return false;">🗣️ Counselling</a>
             <a href="#" onclick="openCAPDFormWithSearch(); return false;">💊 CAPD Status</a>
             <a href="#" onclick="openPETFormWithSearch(); return false;">🧪 PET Test</a>
             <a href="../admissions/death_registration.php">⚰️ Register Death</a>
@@ -700,9 +872,74 @@ $result = $conn->query($sql);
     
     <div class="container">
         <div class="page-header" style="background: white; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 20px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-            <div>
-                <h2 style="color: #2c3e50; margin: 0; font-size: 2rem; font-weight: 600;">👥 Patient Management</h2>
-                <p style="margin: 0.5rem 0 0 0; color: #7f8c8d;">Manage patient records and PET test data</p>
+        
+            <!-- Counselling Modal (moved outside navbar to sit in body like CAPD modal) -->
+            <div id="counsellingModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);">
+                <div style="background-color: white; margin: 5% auto; padding: 0; border-radius: 12px; width: 90%; max-width: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+                    <div style="background: linear-gradient(135deg, #8e24aa 0%, #ce93d8 100%); color: white; padding: 1.5rem; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                        <h2 style="margin: 0; font-size: 1.5rem;">🗣️ Counselling Entry</h2>
+                        <button onclick="closeCounsellingModal()" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 0; width: 30px; height: 30px;">&times;</button>
+                    </div>
+                    <?php if (!empty($counselling_message)): ?>
+                        <div id="counselling_message_box" style="margin: 1rem 1.5rem; padding: 1rem; border-radius: 8px; <?php echo $counselling_message_type == 'success' ? 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;' : 'background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;'; ?>">
+                            <?php echo htmlspecialchars($counselling_message); ?>
+                        </div>
+                    <?php endif; ?>
+                    <form id="counsellingForm" method="POST" style="padding: 1.5rem;">
+                        <input type="hidden" name="action" value="add_counselling">
+                        <input type="hidden" id="counselling_patient_id" name="patient_id">
+                        <!-- Patient Search Section -->
+                        <div id="counsellingPatientSearchSection" style="margin-bottom: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #2c3e50;">🔍 Search Patient *</label>
+                            <div style="position: relative;">
+                                <input type="text" id="counsellingPatientSearch" placeholder="Type patient name or NIC to search..." style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                                <div id="counsellingSearchResults" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-top: none; border-radius: 0 0 8px 8px; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1); z-index: 1001;"></div>
+                            </div>
+                        </div>
+                        <!-- Selected Patient Info -->
+                        <div id="counsellingSelectedPatient" style="margin-bottom: 1.5rem; display: none;">
+                            <div style="background: #f3e5f5; padding: 1rem; border-radius: 8px; border-left: 4px solid #8e24aa;">
+                                <div style="font-size: 0.85rem; color: #6a1b9a; font-weight: 600; margin-bottom: 0.25rem;">Selected Patient:</div>
+                                <div id="counselling_patient_name" style="font-size: 1.1rem; font-weight: 600; color: #2c3e50; margin-bottom: 0.5rem;"></div>
+                                <button type="button" onclick="changeCounsellingPatient()" style="background: #ff9800; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Change Patient</button>
+                                
+                            </div>
+                        </div>
+                        <!-- (Removed duplicate first-counselling block) -->
+                        <!-- Last Counselling summary (moved) -->
+                        <div id="counsellingLastInfo" style="margin-bottom:1rem; display:none; background:#fff; padding:0.75rem; border-radius:6px; border:1px solid #eee;">
+                            <div style="font-size:0.9rem; color:#6a1b9a; font-weight:700; margin-bottom:0.25rem;">Last Counselling</div>
+                            <div id="counselling_last_date" style="font-size:0.95rem; color:#2c3e50; font-weight:600;"></div>
+                            <div id="counselling_last_notes" style="font-size:0.95rem; color:#444; margin-top:0.35rem; white-space:pre-wrap;"></div>
+                        </div>
+
+                        <!-- Single Counselling entry (date, nursing officer, remarks) -->
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #2c3e50;">Counselling Date</label>
+                            <input type="date" id="first_counselling_date" name="first_counselling_date" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                            <label style="display: block; margin: 0.5rem 0 0.25rem 0; font-weight: 600; color: #2c3e50;">Nursing Officer</label>
+                            <select id="first_nursing_officer_id" name="first_nursing_officer_id" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                                <option value="">-- Select Nursing Officer --</option>
+                                <?php $nursing_officer_result = $conn->query("SELECT nursing_id, nursing_name FROM nursing_officers ORDER BY nursing_name ASC");
+                                while ($n = $nursing_officer_result->fetch_assoc()): ?>
+                                <option value="<?php echo $n['nursing_id']; ?>"><?php echo htmlspecialchars($n['nursing_name']); ?></option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+                        <!-- Remarks -->
+                            <div style="margin-bottom: 1.5rem;">
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #2c3e50;">Remarks</label>
+                                <textarea id="counselling_notes" name="notes" rows="3" placeholder="Remarks..." style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; resize: vertical;"></textarea>
+                            </div>
+                        <div style="display: flex; gap: 1rem;">
+                            <button type="submit" style="flex: 1; padding: 0.75rem; background: linear-gradient(135deg, #8e24aa 0%, #ce93d8 100%); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;">💾 Save Counselling</button>
+                            <button type="button" onclick="closeCounsellingModal()" style="padding: 0.75rem 1.5rem; background: #6c757d; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        <div class="container">
             </div>
             <div style="display: flex; gap: 0.5rem;">
                 <a href="patient_form.php" class="btn btn-primary">➕ Add New Patient</a>
@@ -774,7 +1011,20 @@ $result = $conn->query($sql);
                                 </td>
                                 <td><span style="font-family: monospace; background: #f8f9fa; padding: 0.25rem 0.5rem; border-radius: 4px;"><?php echo $patient['nic']; ?></span></td>
                                 <td><?php echo $patient['hospital_number'] ? '<span style="background: #e8f5e8; color: #2d6a2d; padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: 500;">' . $patient['hospital_number'] . '</span>' : '<span style="color: #999;">-</span>'; ?></td>
-                                <td><?php echo $patient['clinic_number'] ? '<span style="background: #e3f2fd; color: #1565c0; padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: 500;">' . $patient['clinic_number'] . '</span>' : '<span style="color: #999;">-</span>'; ?></td>
+                                <td style="text-align: center;">
+                                    <?php
+                                        if ($patient['clinic_number']) {
+                                            echo '<span style="background: #e3f2fd; color: #1565c0; padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: 500;">' . $patient['clinic_number'] . '</span>';
+                                        } else {
+                                            echo '<span style="color: #999;">-</span>';
+                                        }
+                                        // Show PD Status under Clinic Number
+                                        if (!empty($patient['pd_status'])) {
+                                            $pdColor = ($patient['pd_status'] === 'CAPD') ? '#145a32' : (($patient['pd_status'] === 'APD') ? '#154360' : '#d32f2f');
+                                            echo '<div style="font-weight: bold; color: ' . $pdColor . '; font-size: 0.82rem; margin-top: 2px;">' . htmlspecialchars($patient['pd_status']) . '</div>';
+                                        }
+                                    ?>
+                                </td>
                                 <td style="font-size: 0.875rem; color: #555;"><?php echo date('M j, Y', strtotime($patient['date_of_birth'])); ?></td>
                                 <td style="text-align: center;"><span style="color: #2c3e50; font-weight: 600; font-size: 0.875rem;"><?php echo $ageString; ?></span></td>
                                 <td><?php echo $patient['sex']; ?></td>
@@ -810,7 +1060,7 @@ $result = $conn->query($sql);
     </div>
     
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        window.addEventListener('DOMContentLoaded', function() {
             const searchInput = document.getElementById('patient_search');
             const searchResults = document.getElementById('search_results');
             
@@ -867,6 +1117,160 @@ $result = $conn->query($sql);
             // Auto-submit the search form
             document.querySelector('form').submit();
         }
+
+        // Counselling modal patient search and selection
+        (function() {
+            const counsellingSearch = document.getElementById('counsellingPatientSearch');
+            const counsellingResults = document.getElementById('counsellingSearchResults');
+            let counsellingTimeout;
+
+            if (counsellingSearch) {
+                counsellingSearch.addEventListener('input', function() {
+                    const term = this.value.trim();
+                    clearTimeout(counsellingTimeout);
+                    if (term.length < 2) {
+                        counsellingResults.style.display = 'none';
+                        return;
+                    }
+                    counsellingTimeout = setTimeout(() => {
+                        fetch(`patient_list.php?search_patients=1&search_term=${encodeURIComponent(term)}`)
+                            .then(r => r.json())
+                            .then(list => {
+                                if (!list || list.length === 0) {
+                                    counsellingResults.innerHTML = '<div class="search-item">No patients found</div>';
+                                } else {
+                                    counsellingResults.innerHTML = list.map(p =>
+                                        `<div class="search-item" data-id="${p.patient_id}" data-calling="${p.calling_name}" onclick="selectCounsellingPatient(${p.patient_id}, '${p.calling_name.replace(/'/g,"\\'")}')">
+                                            <strong>${p.calling_name}</strong> (${p.full_name})<br>
+                                            <small>NIC: ${p.nic} | PHN: ${p.hospital_number || 'Not assigned'}</small>
+                                        </div>`
+                                    ).join('');
+                                }
+                                counsellingResults.style.display = 'block';
+                            })
+                            .catch(err => console.error('Counselling search error', err));
+                    }, 300);
+                });
+
+                document.addEventListener('click', function(e) {
+                    if (!counsellingSearch.contains(e.target) && !counsellingResults.contains(e.target)) {
+                        counsellingResults.style.display = 'none';
+                    }
+                });
+            }
+        })();
+
+        function selectCounsellingPatient(patientId, callingName) {
+            document.getElementById('counselling_patient_id').value = patientId;
+            document.getElementById('counselling_patient_name').textContent = callingName;
+            document.getElementById('counsellingPatientSearchSection').style.display = 'none';
+            document.getElementById('counsellingSelectedPatient').style.display = 'block';
+
+            // Fetch last counselling data (single recent entry)
+            fetch(`patient_list.php?get_last_counselling=1&patient_id=${patientId}`)
+                .then(r => r.json())
+                .then(data => {
+                    // store last counselling date to prevent duplicate same-day submissions
+                    window._lastCounsellingDate = null;
+                    if (data.has_record) {
+                        // show last counselling summary only (do not prefill entry inputs)
+                        try {
+                            const lastDiv = document.getElementById('counsellingLastInfo');
+                            if (lastDiv) {
+                                document.getElementById('counselling_last_date').textContent = data.first_counselling_date ? ('Date: ' + data.first_counselling_date) : 'Date: -';
+                                document.getElementById('counselling_last_notes').textContent = data.notes || '-';
+                                lastDiv.style.display = 'block';
+                            }
+                        } catch (e) {}
+                        window._lastCounsellingDate = data.first_counselling_date || null;
+                    } else {
+                        // Clear fields if no previous record and preload default remark
+                        document.getElementById('first_counselling_date').value = '';
+                        document.getElementById('first_nursing_officer_id').value = '';
+                        document.getElementById('counselling_notes').value = 'Successfully Completed Counselling Session ';
+                        window._lastCounsellingDate = null;
+                        try { document.getElementById('counsellingLastInfo').style.display = 'none'; } catch(e) {}
+                    }
+                })
+                .catch(err => console.error('Error loading last counselling', err));
+        }
+
+        // Helper to show message inside counselling modal without closing it
+        function showCounsellingMessage(type, message) {
+            let box = document.getElementById('counselling_message_box');
+            if (!box) {
+                const header = document.querySelector('#counsellingModal > div > div');
+                box = document.createElement('div');
+                box.id = 'counselling_message_box';
+                box.style.margin = '1rem 1.5rem';
+                box.style.padding = '1rem';
+                box.style.borderRadius = '8px';
+                header.parentNode.insertBefore(box, header.nextSibling);
+            }
+            if (type === 'success') {
+                box.style.background = '#d4edda'; box.style.color = '#155724'; box.style.border = '1px solid #c3e6cb';
+            } else {
+                box.style.background = '#f8d7da'; box.style.color = '#721c24'; box.style.border = '1px solid #f5c6cb';
+            }
+            box.textContent = message;
+        }
+
+        // Intercept counselling form submit to use AJAX and keep modal open on errors
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('counsellingForm');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+
+                    try {
+                        const selectedDate = document.getElementById('first_counselling_date').value;
+                        if (selectedDate && window._lastCounsellingDate && selectedDate === window._lastCounsellingDate) {
+                            showCounsellingMessage('error', 'Error: A counselling entry for this patient already exists on ' + selectedDate + '. Please change the date.');
+                            return false;
+                        }
+                    } catch (err) {
+                        // ignore and continue with AJAX submit
+                    }
+
+                    // Prepare form data and flag as AJAX
+                    const fd = new FormData(form);
+                    fd.append('ajax', '1');
+
+                    fetch('patient_list.php', {
+                        method: 'POST',
+                        body: fd,
+                        credentials: 'same-origin'
+                    })
+                    .then(r => r.json())
+                    .then(resp => {
+                        if (resp && typeof resp === 'object') {
+                            if (resp.success) {
+                                showCounsellingMessage('success', resp.message || 'Counselling record saved.');
+                                // update last counselling date so duplicate check works immediately
+                                try {
+                                    const d = document.getElementById('first_counselling_date').value;
+                                    if (d) window._lastCounsellingDate = d;
+                                } catch (e) {}
+                                // close modal after short delay
+                                setTimeout(() => {
+                                    closeCounsellingModal();
+                                }, 900);
+                            } else {
+                                showCounsellingMessage('error', resp.message || 'Error saving counselling record.');
+                            }
+                        } else {
+                            showCounsellingMessage('error', 'Unexpected server response.');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Counselling submit error:', err);
+                        showCounsellingMessage('error', 'Network or server error while saving counselling.');
+                    });
+
+                    return false;
+                });
+            }
+        });
         
         // PET Form Functions
         function openPETForm(patientId, patientName) {
@@ -896,7 +1300,7 @@ $result = $conn->query($sql);
         
         // Patient search for PET form
         let petSearchTimeout;
-        document.addEventListener('DOMContentLoaded', function() {
+        window.addEventListener('DOMContentLoaded', function() {
             const petSearchInput = document.getElementById('petPatientSearch');
             const petSearchResults = document.getElementById('petSearchResults');
             
@@ -1253,6 +1657,7 @@ $result = $conn->query($sql);
             const petModal = document.getElementById('petModal');
             const petHistoryModal = document.getElementById('petHistoryModal');
             const capdModal = document.getElementById('capdModal');
+            const counsellingModalEl = document.getElementById('counsellingModal');
             
             if (event.target == petModal) {
                 closePETModal();
@@ -1262,6 +1667,9 @@ $result = $conn->query($sql);
             }
             if (event.target == capdModal) {
                 closeCApdModal();
+            }
+            if (event.target == counsellingModalEl) {
+                closeCounsellingModal();
             }
         }
         
@@ -1278,6 +1686,163 @@ $result = $conn->query($sql);
             document.getElementById('allPETModal').style.display = 'block';
         });
         <?php endif; ?>
+        
+        function openCounsellingModal() {
+            const modal = document.getElementById('counsellingModal');
+            // mark as opened via button and show modal using class
+            modal.classList.add('open');
+            document.getElementById('counsellingForm').reset();
+            // Show search, hide selected patient
+            document.getElementById('counsellingPatientSearchSection').style.display = 'block';
+            document.getElementById('counsellingSelectedPatient').style.display = 'none';
+            // Clear and focus search field
+            document.getElementById('counsellingPatientSearch').value = '';
+            document.getElementById('counsellingSearchResults').style.display = 'none';
+            // Ensure modal is below the sticky navbar
+            try {
+                const navbar = document.querySelector('.navbar');
+                const inner = modal.querySelector('div'); // inner wrapper
+                if (navbar && inner) {
+                    const h = navbar.offsetHeight || 64;
+                    inner.style.margin = `${h + 20}px auto`;
+                }
+            } catch (e) {
+                // ignore
+            }
+            // Prefill default remark text
+            try { document.getElementById('counselling_notes').value = 'Successfully Completed Counselling Session '; } catch (e) {}
+            setTimeout(() => {
+                document.getElementById('counsellingPatientSearch').focus();
+            }, 100);
+        }
+        function closeCounsellingModal() {
+            const modal = document.getElementById('counsellingModal');
+            modal.classList.remove('open');
+            // reset any inline margin override
+            try {
+                const inner = modal.querySelector('div');
+                if (inner) inner.style.margin = '20px auto';
+            } catch (e) {}
+        }
+
+        function changeCounsellingPatient() {
+            document.getElementById('counsellingPatientSearchSection').style.display = 'block';
+            document.getElementById('counsellingSelectedPatient').style.display = 'none';
+            document.getElementById('counsellingPatientSearch').value = '';
+            document.getElementById('counsellingSearchResults').style.display = 'none';
+            try { document.getElementById('counsellingLastInfo').style.display = 'none'; } catch(e) {}
+            setTimeout(() => {
+                document.getElementById('counsellingPatientSearch').focus();
+            }, 100);
+        }
+
+        // Patient search for Counselling form
+        let counsellingSearchTimeout;
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ensure modal isn't accidentally open on page load
+            const counsellingModalEl = document.getElementById('counsellingModal');
+            if (counsellingModalEl) {
+                counsellingModalEl.classList.remove('open');
+            }
+            const counsellingSearchInput = document.getElementById('counsellingPatientSearch');
+            const counsellingSearchResults = document.getElementById('counsellingSearchResults');
+            if (counsellingSearchInput) {
+                counsellingSearchInput.addEventListener('input', function() {
+                    clearTimeout(counsellingSearchTimeout);
+                    const searchTerm = this.value.trim();
+                    if (searchTerm.length < 3) {
+                        counsellingSearchResults.style.display = 'none';
+                        return;
+                    }
+                    counsellingSearchTimeout = setTimeout(function() {
+                        fetch('patient_list.php?search_patients=1&search_term=' + encodeURIComponent(searchTerm))
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.length > 0) {
+                                    let html = '<div style="padding: 0.5rem;">';
+                                    data.forEach(patient => {
+                                        const hospitalNum = patient.hospital_number || '-';
+                                        const clinicNum = patient.clinic_number || '-';
+                                        html += `<div onclick="selectCounsellingPatient(${patient.patient_id}, '${patient.calling_name.replace(/'/g, "\\'")}', '${patient.full_name.replace(/'/g, "\\'")}', '${patient.nic.replace(/'/g, "\\'")}', '${hospitalNum.replace(/'/g, "\\'")}')"
+                                                style="padding: 0.75rem; cursor: pointer; border-bottom: 1px solid #eee; transition: background 0.2s;"
+                                                onmouseover="this.style.background='#f0f0f0'" 
+                                                onmouseout="this.style.background='white'">
+                                            <div style="font-weight: 600; color: #2c3e50; font-size: 1rem;">${patient.full_name} (${patient.calling_name})</div>
+                                            <div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">NIC: ${patient.nic} | PHN: ${hospitalNum} | Clinic: ${clinicNum}</div>
+                                        </div>`;
+                                    });
+                                    html += '</div>';
+                                    counsellingSearchResults.innerHTML = html;
+                                    counsellingSearchResults.style.display = 'block';
+                                } else {
+                                    counsellingSearchResults.innerHTML = '<div style="padding: 1rem; text-align: center; color: #666;">No patients found</div>';
+                                    counsellingSearchResults.style.display = 'block';
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Search error:', error);
+                            });
+                    }, 300);
+                });
+                // Close search results when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!counsellingSearchInput.contains(e.target) && !counsellingSearchResults.contains(e.target)) {
+                        counsellingSearchResults.style.display = 'none';
+                    }
+                });
+            }
+        });
+
+        // As a final safeguard, ensure counselling modal is hidden on full load
+        window.addEventListener('load', function() {
+            const modal = document.getElementById('counsellingModal');
+            const msg = document.getElementById('counselling_message_box');
+            // If there is an active counselling message, don't auto-hide the modal so the message remains visible
+            if (modal && !msg) {
+                modal.classList.remove('open');
+                modal.style.display = 'none';
+            }
+        });
+
+        function selectCounsellingPatient(patientId, callingName, fullName, nic, hospitalNo) {
+            // Set patient ID
+            document.getElementById('counselling_patient_id').value = patientId;
+            // Update display
+            document.getElementById('counselling_patient_name').textContent = `${callingName} (${fullName}) - NIC: ${nic} - PHN: ${hospitalNo}`;
+            // Hide search, show selected patient
+            document.getElementById('counsellingPatientSearchSection').style.display = 'none';
+            document.getElementById('counsellingSelectedPatient').style.display = 'block';
+            document.getElementById('counsellingSearchResults').style.display = 'none';
+
+            // Fetch last counselling data (single recent entry) and populate summary + fields
+            fetch(`patient_list.php?get_last_counselling=1&patient_id=${patientId}`)
+                .then(r => r.json())
+                .then(data => {
+                    window._lastCounsellingDate = null;
+                    if (data.has_record) {
+                        try {
+                            // Do not overwrite entry inputs; only show summary
+                            const lastDiv = document.getElementById('counsellingLastInfo');
+                            if (lastDiv) {
+                                document.getElementById('counselling_last_date').textContent = data.first_counselling_date ? ('Date: ' + data.first_counselling_date) : 'Date: -';
+                                document.getElementById('counselling_last_notes').textContent = data.notes || '-';
+                                lastDiv.style.display = 'block';
+                            }
+                        } catch (e) {}
+                        window._lastCounsellingDate = data.first_counselling_date || null;
+                    } else {
+                        try {
+                            document.getElementById('first_counselling_date').value = '';
+                            document.getElementById('first_nursing_officer_id').value = '';
+                            document.getElementById('counselling_notes').value = 'Successfully Completed Counselling Session ';
+                            const lastDiv = document.getElementById('counsellingLastInfo');
+                            if (lastDiv) lastDiv.style.display = 'none';
+                        } catch (e) {}
+                        window._lastCounsellingDate = null;
+                    }
+                })
+                .catch(err => console.error('Error loading last counselling', err));
+        }
     </script>
 
     <!-- All PET Records Modal -->
@@ -1307,6 +1872,8 @@ $result = $conn->query($sql);
                                     <th style="padding: 1rem; text-align: left;">Hospital #</th>
                                     <th style="padding: 1rem; text-align: left;">Test Date</th>
                                     <th style="padding: 1rem; text-align: left;">PET Level</th>
+                                       <th style="padding: 1rem; text-align: left;">PD Status</th>
+                                       <th style="padding: 1rem; text-align: left;">PD Status</th>
                                     <th style="padding: 1rem; text-align: center;">D/P Creatinine</th>
                                     <th style="padding: 1rem; text-align: center;">D/D0 Glucose</th>
                                     <th style="padding: 1rem; text-align: center;">UF (mL)</th>
@@ -1341,6 +1908,15 @@ $result = $conn->query($sql);
                                                 <?php echo htmlspecialchars($record['pet_level']); ?>
                                             </span>
                                         </td>
+                                           <td style="padding: 1rem;">
+                                               <?php if (!empty($record['pd_status'])): ?>
+                                                   <span style="background: #e3f2fd; color: #1565c0; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; white-space: nowrap;">
+                                                       <?php echo htmlspecialchars($record['pd_status']); ?>
+                                                   </span>
+                                               <?php else: ?>
+                                                   <span style="color: #999; font-style: italic;">-</span>
+                                               <?php endif; ?>
+                                           </td>
                                         <td style="padding: 1rem; text-align: center; font-family: monospace; font-weight: 600;">
                                             <?php echo $record['d_p_creatinine'] ? number_format($record['d_p_creatinine'], 2) : '<span style="color: #999;">-</span>'; ?>
                                         </td>
@@ -1439,6 +2015,15 @@ $result = $conn->query($sql);
                         <option value="Low">Low Transporter</option>
                     </select>
                 </div>
+
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #2c3e50;">PD Status *</label>
+                        <select name="pd_status" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                            <option value="">Select PD Status</option>
+                            <option value="CAPD">CAPD</option>
+                            <option value="APD">APD</option>
+                        </select>
+                    </div>
                 
                 <div style="margin-bottom: 1rem;">
                     <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #2c3e50;">D/P Creatinine Ratio</label>
@@ -1520,6 +2105,15 @@ $result = $conn->query($sql);
                                                 <?php echo htmlspecialchars($record['pet_level']); ?>
                                             </span>
                                         </td>
+                                           <td style="padding: 1rem;">
+                                               <?php if (!empty($record['pd_status'])): ?>
+                                                   <span style="background: #e3f2fd; color: #1565c0; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.9rem; white-space: nowrap;">
+                                                       <?php echo htmlspecialchars($record['pd_status']); ?>
+                                                   </span>
+                                               <?php else: ?>
+                                                   <span style="color: #999; font-style: italic;">-</span>
+                                               <?php endif; ?>
+                                           </td>
                                         <td style="padding: 1rem; text-align: center; font-family: monospace; font-weight: 600;">
                                             <?php echo $record['d_p_creatinine'] ? number_format($record['d_p_creatinine'], 2) : '<span style="color: #999;">-</span>'; ?>
                                         </td>

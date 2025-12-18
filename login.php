@@ -31,6 +31,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_SESSION['capd_alert'] = $capd_alert_count;
             }
             
+            // Log successful login
+            if (function_exists('log_activity')) {
+                $details = json_encode(['username'=>$user['username'], 'ip'=>($_SERVER['REMOTE_ADDR'] ?? '')]);
+                log_activity($user['user_id'], 'login', 'users', $user['user_id'], $details);
+            }
+
             header("Location: index.php");
             exit();
         } else {
@@ -46,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Patient Management System - Login</title>
+    <title>Woard & Clinic Management System - Login</title>
     <style>
         * {
             margin: 0;
@@ -145,13 +151,54 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             margin-top: 1rem;
             font-size: 0.9rem;
         }
+        
+        /* Mobile responsive styles */
+        @media screen and (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .login-container {
+                padding: 1.5rem;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+            }
+            
+            .login-header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .login-header p {
+                font-size: 0.9rem;
+            }
+            
+            .form-group input {
+                font-size: 16px; /* Prevents zoom on iOS */
+                padding: 0.875rem;
+            }
+            
+            .btn-login {
+                padding: 0.875rem;
+                font-size: 1rem;
+                min-height: 44px;
+            }
+        }
+        
+        @media screen and (max-width: 480px) {
+            .login-container {
+                padding: 1.25rem;
+            }
+            
+            .login-header {
+                margin-bottom: 1.5rem;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="login-container">
         <div class="login-header">
             <h1>🏥 Patient Management</h1>
-            <p>Patient Management System</p>
+            <p>Woard &amp; Clinic Management System</p>
         </div>
         
         <?php if ($login_error): ?>

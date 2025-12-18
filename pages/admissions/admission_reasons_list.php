@@ -52,18 +52,18 @@ if ($count == 0) {
     }
 }
 
-// Delete admission reason if requested
-if (isset($_GET['delete'])) {
-    $id = $conn->real_escape_string($_GET['delete']);
-    $sql = "UPDATE admission_reasons SET is_active = 0 WHERE reason_id = $id";
-    if ($conn->query($sql) === TRUE) {
-        header("Location: admission_reasons_list.php?deleted=success");
-        exit();
-    } else {
-        header("Location: admission_reasons_list.php?deleted=error");
-        exit();
-    }
-}
+// Delete admission reason - DISABLED
+// if (isset($_GET['delete'])) {
+//     $id = $conn->real_escape_string($_GET['delete']);
+//     $sql = "UPDATE admission_reasons SET is_active = 0 WHERE reason_id = $id";
+//     if ($conn->query($sql) === TRUE) {
+//         header("Location: admission_reasons_list.php?deleted=success");
+//         exit();
+//     } else {
+//         header("Location: admission_reasons_list.php?deleted=error");
+//         exit();
+//     }
+// }
 
 // Reactivate admission reason if requested
 if (isset($_GET['reactivate'])) {
@@ -470,7 +470,6 @@ $result = $conn->query($sql);
                                         <div class="btn-group">
                                             <?php if (!$show_inactive): ?>
                                                 <a href="admission_reason_form.php?edit=<?php echo $reason['reason_id']; ?>" class="btn btn-warning btn-sm" title="Edit">✏️</a>
-                                                <a href="admission_reasons_list.php?delete=<?php echo $reason['reason_id']; ?>" class="btn btn-danger btn-sm" title="Deactivate" onclick="return confirm('Are you sure you want to deactivate this admission reason?');">🗑️</a>
                                             <?php else: ?>
                                                 <a href="admission_reasons_list.php?reactivate=<?php echo $reason['reason_id']; ?>" class="btn btn-success btn-sm" title="Reactivate" onclick="return confirm('Are you sure you want to reactivate this admission reason?');">🔄</a>
                                             <?php endif; ?>

@@ -1,6 +1,6 @@
 <?php
 /**
- * Hospital Patient Management System
+ * Woard & Clinic Management System
  * Configuration File
  * 
  * Edit this file with your specific settings
@@ -21,7 +21,7 @@ define('DB_NAME', 'intimate_hospital_management');  // Database name
 // ====================================
 
 // Application Title
-define('APP_TITLE', 'Hospital Patient Management System');
+define('APP_TITLE', 'Woard & Clinic Management System');
 
 // Application Version
 define('APP_VERSION', '1.0');

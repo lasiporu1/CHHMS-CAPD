@@ -23,8 +23,8 @@ class PatientSearch {
             delay: options.delay || 200,
             maxResults: options.maxResults || 15,
             placeholder: options.placeholder || '🔍 Search by patient name, NIC, hospital number, clinic number...',
-            onSelect: options.onSelect || function(patient) { console.log('Patient selected:', patient); },
-            onClear: options.onClear || function() { console.log('Selection cleared'); },
+            onSelect: options.onSelect || function(patient) {},
+            onClear: options.onClear || function() {},
             showSelectedDisplay: options.showSelectedDisplay !== false,
             ajaxUrl: options.ajaxUrl || this.inputElement.dataset.ajaxUrl || '../includes/patient_search_ajax.php'
         };

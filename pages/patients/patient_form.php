@@ -7,10 +7,20 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+
 $patient_id = $calling_name = $full_name = $nic = $hospital_number = $clinic_number = '';
 $date_of_birth = $sex = $blood_group = $contact_number = $address = '';
 $guardian_name = $guardian_contact_number = $assigned_nursing_officer = '';
+$moh_office = $district = '';
+$photo = '';
 $error = '';
+
+// Add photo column if not exists
+$check_photo_col = "SHOW COLUMNS FROM patients LIKE 'photo'";
+$photo_col_result = $conn->query($check_photo_col);
+if ($photo_col_result->num_rows == 0) {
+    $conn->query("ALTER TABLE patients ADD COLUMN photo VARCHAR(255) NULL");
+}
 
 if (isset($_GET['edit'])) {
     $id = $conn->real_escape_string($_GET['edit']);
@@ -33,11 +43,45 @@ if (isset($_GET['edit'])) {
         $guardian_name = $patient['guardian_name'];
         $guardian_contact_number = $patient['guardian_contact_number'];
         $assigned_nursing_officer = $patient['assigned_nursing_officer'] ?? '';
+        $moh_office = $patient['moh_office'] ?? '';
+        $district = $patient['district'] ?? '';
+        $photo = $patient['photo'] ?? '';
     }
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Validate required fields
+    // Handle photo upload or camera capture
+    $photo_path = $photo;
+    // 1. Handle file upload
+    if (isset($_FILES['photo']) && $_FILES['photo']['error'] == UPLOAD_ERR_OK) {
+        $allowed = ['jpg','jpeg','png','gif','webp'];
+        $ext = strtolower(pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION));
+        if (in_array($ext, $allowed)) {
+            $target_dir = '../../assets/photos/';
+            if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
+            $filename = 'patient_' . time() . '_' . rand(1000,9999) . '.' . $ext;
+            $target_file = $target_dir . $filename;
+            if (move_uploaded_file($_FILES['photo']['tmp_name'], $target_file)) {
+                $photo_path = 'assets/photos/' . $filename;
+            }
+        }
+    }
+    // 2. Handle camera capture (base64 image in photoData)
+    elseif (!empty($_POST['photoData'])) {
+        $data = $_POST['photoData'];
+        if (preg_match('/^data:image\/(png|jpeg|jpg);base64,/', $data, $type)) {
+            $data = substr($data, strpos($data, ',') + 1);
+            $data = base64_decode($data);
+            $ext = $type[1] == 'jpeg' ? 'jpg' : $type[1];
+            $target_dir = '../../assets/photos/';
+            if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
+            $filename = 'patient_' . time() . '_' . rand(1000,9999) . '.' . $ext;
+            $target_file = $target_dir . $filename;
+            if (file_put_contents($target_file, $data)) {
+                $photo_path = 'assets/photos/' . $filename;
+            }
+        }
+    }
     if (empty($_POST['calling_name'])) {
         $error = "Calling name is required!";
     } elseif (empty($_POST['full_name'])) {
@@ -70,6 +114,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $guardian_name = $conn->real_escape_string($_POST['guardian_name']);
         $guardian_contact_number = $conn->real_escape_string($_POST['guardian_contact_number']);
         $assigned_nursing_officer = !empty($_POST['assigned_nursing_officer']) ? $conn->real_escape_string($_POST['assigned_nursing_officer']) : 'NULL';
+        $moh_office = isset($_POST['moh_office']) ? $conn->real_escape_string($_POST['moh_office']) : '';
+        $district = isset($_POST['district']) ? $conn->real_escape_string($_POST['district']) : '';
+        // Add MOH Office and District columns if not exist
+        $check_moh = "SHOW COLUMNS FROM patients LIKE 'moh_office'";
+        $col_moh = $conn->query($check_moh);
+        if ($col_moh->num_rows == 0) {
+            $conn->query("ALTER TABLE patients ADD COLUMN moh_office VARCHAR(100) NULL");
+        }
+        $check_dist = "SHOW COLUMNS FROM patients LIKE 'district'";
+        $col_dist = $conn->query($check_dist);
+        if ($col_dist->num_rows == 0) {
+            $conn->query("ALTER TABLE patients ADD COLUMN district VARCHAR(100) NULL");
+        }
 
         // Add nursing officer column if it doesn't exist
         $check_column = "SHOW COLUMNS FROM patients LIKE 'assigned_nursing_officer'";
@@ -89,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $error = "Another patient with this NIC ($nic) already exists in the system!";
             } else {
                 // Update patient
-                $sql = "UPDATE patients SET calling_name='$calling_name', full_name='$full_name', nic='$nic', hospital_number='$hospital_number', clinic_number='$clinic_number', date_of_birth='$date_of_birth', sex='$sex', blood_group='$blood_group', contact_number='$contact_number', address='$address', guardian_name='$guardian_name', guardian_contact_number='$guardian_contact_number', assigned_nursing_officer=$assigned_nursing_officer WHERE patient_id=$patient_id";
+                $sql = "UPDATE patients SET calling_name='$calling_name', full_name='$full_name', nic='$nic', hospital_number='$hospital_number', clinic_number='$clinic_number', date_of_birth='$date_of_birth', sex='$sex', blood_group='$blood_group', contact_number='$contact_number', address='$address', guardian_name='$guardian_name', guardian_contact_number='$guardian_contact_number', assigned_nursing_officer=$assigned_nursing_officer, moh_office='$moh_office', district='$district', photo=" . ($photo_path ? "'$photo_path'" : 'NULL') . " WHERE patient_id=$patient_id";
             
                 if ($conn->query($sql) === TRUE) {
                     header("Location: patient_list.php");
@@ -126,8 +183,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             } else {
                 // Create new patient
-                $sql = "INSERT INTO patients (calling_name, full_name, nic, hospital_number, clinic_number, date_of_birth, sex, blood_group, contact_number, address, guardian_name, guardian_contact_number, assigned_nursing_officer) 
-                        VALUES ('$calling_name', '$full_name', '$nic', '$hospital_number', '$clinic_number', '$date_of_birth', '$sex', '$blood_group', '$contact_number', '$address', '$guardian_name', '$guardian_contact_number', $assigned_nursing_officer)";
+                $sql = "INSERT INTO patients (calling_name, full_name, nic, hospital_number, clinic_number, date_of_birth, sex, blood_group, contact_number, address, guardian_name, guardian_contact_number, assigned_nursing_officer, moh_office, district, photo) 
+                    VALUES ('$calling_name', '$full_name', '$nic', '$hospital_number', '$clinic_number', '$date_of_birth', '$sex', '$blood_group', '$contact_number', '$address', '$guardian_name', '$guardian_contact_number', $assigned_nursing_officer, '$moh_office', '$district', " . ($photo_path ? "'$photo_path'" : 'NULL') . ")";
                 
                 if ($conn->query($sql) === TRUE) {
                     header("Location: patient_list.php");
@@ -354,7 +411,7 @@ $nursing_officers_result = $conn->query($nursing_officers_sql);
 </head>
 <body>
     <div class="navbar">
-        <h1>🏥 Patient Management System</h1>
+        <h1>🏥 Woard &amp; Clinic Management System</h1>
         <div class="nav-links">
             <a href="../../index.php">Dashboard</a>
             <a href="patient_list.php">Patients</a>
@@ -370,7 +427,26 @@ $nursing_officers_result = $conn->query($nursing_officers_sql);
                 <div class="alert alert-danger"><?php echo $error; ?></div>
             <?php endif; ?>
             
-            <form method="POST">
+            <form method="POST" enctype="multipart/form-data">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="photo">Photograph</label>
+                                        <input type="file" id="photo" name="photo" accept="image/*" style="display:none;">
+                                        <button type="button" id="openCameraBtn" class="btn btn-primary" style="margin-bottom:0.5rem;">Take Photo</button>
+                                        <video id="cameraStream" width="200" height="150" autoplay style="display:none;border-radius:8px;"></video>
+                                        <canvas id="photoCanvas" width="200" height="150" style="display:none;"></canvas>
+                                        <button type="button" id="captureBtn" class="btn btn-secondary" style="display:none;margin-top:0.5rem;">Capture</button>
+                                        <button type="button" id="cancelCameraBtn" class="btn btn-secondary" style="display:none;margin-top:0.5rem;">Cancel</button>
+                                        <input type="hidden" id="photoData" name="photoData">
+                                        <?php if (!empty($photo)): ?>
+                                            <div style="margin-top:0.5rem;">
+                                                <img src="../../<?php echo $photo; ?>" alt="Patient Photo" style="max-width:120px;max-height:120px;border-radius:8px;border:1px solid #ccc;">
+                                            </div>
+                                        <?php endif; ?>
+                                        <small style="color:#666;display:block;">You can take a photo using your device camera or select a file.</small>
+                                        <button type="button" id="uploadFileBtn" class="btn btn-secondary" style="margin-top:0.5rem;">Upload from File</button>
+                                    </div>
+                                </div>
                 <?php if ($patient_id): ?>
                     <input type="hidden" name="patient_id" value="<?php echo $patient_id; ?>">
                 <?php endif; ?>
@@ -443,16 +519,29 @@ $nursing_officers_result = $conn->query($nursing_officers_sql);
                 
                 <div class="section-title">Contact Information</div>
                 
+
+
                 <div class="form-row">
                     <div class="form-group">
                         <label for="contact_number">Contact Number *</label>
                         <input type="tel" id="contact_number" name="contact_number" value="<?php echo $contact_number; ?>" required>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="address">Address *</label>
                     <textarea id="address" name="address" rows="3" required><?php echo $address; ?></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="moh_office">MOH Office</label>
+                        <input type="text" id="moh_office" name="moh_office" value="<?php echo isset($moh_office) ? htmlspecialchars($moh_office) : ''; ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="district">District</label>
+                        <input type="text" id="district" name="district" value="<?php echo isset($district) ? htmlspecialchars($district) : ''; ?>">
+                    </div>
                 </div>
                 
                 <div class="section-title">Guardian Information</div>
@@ -491,5 +580,94 @@ $nursing_officers_result = $conn->query($nursing_officers_sql);
             </form>
         </div>
     </div>
+    <script>
+    // Camera/photo logic (refactored)
+    const openCameraBtn = document.getElementById('openCameraBtn');
+    const cameraStream = document.getElementById('cameraStream');
+    const photoCanvas = document.getElementById('photoCanvas');
+    const captureBtn = document.getElementById('captureBtn');
+    const cancelCameraBtn = document.getElementById('cancelCameraBtn');
+    const photoData = document.getElementById('photoData');
+    const photoInput = document.getElementById('photo');
+    const uploadFileBtn = document.getElementById('uploadFileBtn');
+    let stream = null;
+    // For preview
+    let previewImg = null;
+    let previewDiv = null;
+
+    function showPreview(src) {
+        if (!previewDiv) {
+            previewDiv = document.createElement('div');
+            previewDiv.style.marginTop = '0.5rem';
+            previewImg = document.createElement('img');
+            previewImg.style.maxWidth = '120px';
+            previewImg.style.maxHeight = '120px';
+            previewImg.style.borderRadius = '8px';
+            previewImg.style.border = '1px solid #ccc';
+            previewDiv.appendChild(previewImg);
+            // Insert after the file input
+            photoInput.parentNode.insertBefore(previewDiv, uploadFileBtn.nextSibling);
+        }
+        previewImg.src = src;
+    }
+
+    openCameraBtn.onclick = async function() {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                cameraStream.srcObject = stream;
+                cameraStream.style.display = 'block';
+                captureBtn.style.display = 'inline-block';
+                cancelCameraBtn.style.display = 'inline-block';
+                openCameraBtn.style.display = 'none';
+                uploadFileBtn.style.display = 'none';
+            } catch (e) {
+                alert('Camera not accessible: ' + e.message);
+            }
+        } else {
+            alert('Camera not supported on this device/browser.');
+        }
+    };
+
+    captureBtn.onclick = function() {
+        photoCanvas.getContext('2d').drawImage(cameraStream, 0, 0, photoCanvas.width, photoCanvas.height);
+        photoCanvas.style.display = 'block';
+        cameraStream.style.display = 'none';
+        captureBtn.style.display = 'none';
+        cancelCameraBtn.style.display = 'none';
+        openCameraBtn.style.display = 'inline-block';
+        uploadFileBtn.style.display = 'inline-block';
+        if (stream) { stream.getTracks().forEach(track => track.stop()); }
+        // Save image data to hidden input
+        const dataUrl = photoCanvas.toDataURL('image/png');
+        photoData.value = dataUrl;
+        showPreview(dataUrl);
+    };
+
+    cancelCameraBtn.onclick = function() {
+        cameraStream.style.display = 'none';
+        captureBtn.style.display = 'none';
+        cancelCameraBtn.style.display = 'none';
+        openCameraBtn.style.display = 'inline-block';
+        uploadFileBtn.style.display = 'inline-block';
+        if (stream) { stream.getTracks().forEach(track => track.stop()); }
+    };
+
+    uploadFileBtn.onclick = function() {
+        photoInput.click();
+    };
+
+    photoInput.addEventListener('change', function(e) {
+        if (photoInput.files && photoInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                showPreview(evt.target.result);
+                // Also clear the hidden photoData field (since file will be uploaded)
+                photoData.value = '';
+            };
+            reader.readAsDataURL(photoInput.files[0]);
+        }
+    });
+    </script>
 </body>
 </html>

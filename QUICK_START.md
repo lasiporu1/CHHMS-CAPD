@@ -1,4 +1,4 @@
-# Hospital Patient Management System - Quick Start Guide
+# Woard & Clinic Management System - Quick Start Guide
 
 ## Initial Setup (Do This First!)
 

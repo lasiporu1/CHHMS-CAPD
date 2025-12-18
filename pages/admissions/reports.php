@@ -37,8 +37,14 @@ $create_table_sql = "CREATE TABLE IF NOT EXISTS reports (
 )";
 $conn->query($create_table_sql);
 
-// Delete report if requested
-if (isset($_GET['delete'])) {
+// Get current user role
+$current_user_sql = "SELECT user_role FROM users WHERE user_id = {$_SESSION['user_id']}";
+$current_user_result = $conn->query($current_user_sql);
+$current_user = $current_user_result->fetch_assoc();
+$is_admin = ($current_user['user_role'] == 'Admin');
+
+// Delete report if requested (only for Admin)
+if (isset($_GET['delete']) && $is_admin) {
     $id = $conn->real_escape_string($_GET['delete']);
     $sql = "DELETE FROM reports WHERE report_id = $id AND admission_id = $admission_id";
     if ($conn->query($sql) === TRUE) {
@@ -462,7 +468,9 @@ $result = $conn->query($sql);
                                         <div class="btn-group">
                                             <a href="report_view.php?id=<?php echo $report['report_id']; ?>&admission_id=<?php echo $admission_id; ?>" class="btn btn-primary btn-sm" title="View">👁️</a>
                                             <a href="report_form.php?edit=<?php echo $report['report_id']; ?>&admission_id=<?php echo $admission_id; ?>" class="btn btn-secondary btn-sm" title="Edit">✏️</a>
-                                            <a href="?delete=<?php echo $report['report_id']; ?>&admission_id=<?php echo $admission_id; ?>" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete this report?')">🗑️</a>
+                                            <?php if ($is_admin): ?>
+                                                <a href="?delete=<?php echo $report['report_id']; ?>&admission_id=<?php echo $admission_id; ?>" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete this report?')">🗑️</a>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>

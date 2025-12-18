@@ -50,81 +50,95 @@ foreach ($pet_summary as $record) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PET Summary Report</title>
     <style>
-        @media print {
-            .no-print {
-                display: none !important;
-            }
+        <style>
             body {
-                background: white !important;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+                min-height: 100vh;
+                margin: 0;
             }
             .container {
-                padding: 0 !important;
+                width: 100vw;
+                max-width: 100vw;
+                margin: 0;
+                padding: 0;
             }
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        
-        .stat-card {
-            padding: 1.5rem;
-            border-radius: 8px;
-            text-align: center;
-        }
-        
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-        }
-        
-        .stat-label {
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header no-print">
-            <div>
-                <h1>🧪 PET Summary Report</h1>
-                <p style="margin: 0.5rem 0 0 0; color: #7f8c8d;">Latest Peritoneal Equilibration Test Results for Each Patient</p>
+            .data-section {
+                background: white;
+                border-radius: 12px;
+                padding: 1.2vw 1vw;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+                margin-bottom: 2vw;
+            }
+            .table-container {
+                width: 100vw;
+                overflow-x: auto;
+            }
+            table {
+                width: 98vw;
+                min-width: 900px;
+                border-collapse: collapse;
+                margin-top: 2vw;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+            table thead {
+                background: linear-gradient(135deg, #34495e, #2c3e50);
+                color: white;
+            }
+            table th, table td {
+                padding: 0.8vw;
+                text-align: left;
+            }
+            table tbody tr {
+                background: #fff;
+                border-bottom: 1px solid #e9ecef;
+            }
+            table tbody tr:last-child {
+                border-bottom: none;
+            }
+            @media (max-width: 1200px) {
+                .container {
+                    max-width: 100vw;
+                    padding: 0;
+                }
+                .data-section {
+                    padding: 1vw;
+                }
+                table th, table td {
+                    padding: 0.5vw;
+                }
+            }
+            @media (max-width: 800px) {
+                .container {
+                    padding: 0;
+                }
+                .data-section {
+                    padding: 0.5vw;
+                }
+                table th, table td {
+                    padding: 0.3vw;
+                    font-size: 0.9rem;
+                }
+            }
+        </style>
+        <div class="pet-level-stats" style="display: flex; flex-wrap: wrap; gap: 1.5vw; justify-content: center; margin: 2vw 0 2vw 0;">
+            <div class="stat-card" style="flex: 1 1 180px; min-width: 160px; max-width: 220px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; text-align: center; border-radius: 12px; margin: 0.5vw 0;">
+                <div class="stat-value" style="font-size: 2.2rem; font-weight: bold; margin-top: 1vw;"><?php echo $level_counts['High']; ?></div>
+                <div class="stat-label" style="font-size: 1.1rem; margin-bottom: 1vw;">High</div>
             </div>
-            <div>
-                <button onclick="window.print()" class="btn btn-primary" style="margin-right: 1rem;">🖨️ Print Report</button>
-                <a href="report_list.php" class="btn btn-secondary">← Back to Reports</a>
+            <div class="stat-card" style="flex: 1 1 180px; min-width: 160px; max-width: 220px; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: #fff; text-align: center; border-radius: 12px; margin: 0.5vw 0;">
+                <div class="stat-value" style="font-size: 2.2rem; font-weight: bold; margin-top: 1vw;"><?php echo $level_counts['High Average']; ?></div>
+                <div class="stat-label" style="font-size: 1.1rem; margin-bottom: 1vw;">High Average</div>
             </div>
-        </div>
-
-        <!-- Statistics Cards -->
-        <div class="stats-grid">
-            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                <div class="stat-value"><?php echo $total_patients; ?></div>
-                <div class="stat-label">Total Patients with PET Tests</div>
+            <div class="stat-card" style="flex: 1 1 180px; min-width: 160px; max-width: 220px; background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #333; text-align: center; border-radius: 12px; margin: 0.5vw 0;">
+                <div class="stat-value" style="font-size: 2.2rem; font-weight: bold; margin-top: 1vw;"><?php echo $level_counts['Low Average']; ?></div>
+                <div class="stat-label" style="font-size: 1.1rem; margin-bottom: 1vw;">Low Average</div>
             </div>
-            
-            <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white;">
-                <div class="stat-value"><?php echo $level_counts['High']; ?></div>
-                <div class="stat-label">High Transporters</div>
-            </div>
-            
-            <div class="stat-card" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); color: white;">
-                <div class="stat-value"><?php echo $level_counts['High Average']; ?></div>
-                <div class="stat-label">High Average</div>
-            </div>
-            
-            <div class="stat-card" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #333;">
-                <div class="stat-value"><?php echo $level_counts['Low Average']; ?></div>
-                <div class="stat-label">Low Average</div>
-            </div>
-            
-            <div class="stat-card" style="background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%); color: #333;">
-                <div class="stat-value"><?php echo $level_counts['Low']; ?></div>
-                <div class="stat-label">Low Transporters</div>
+            <div class="stat-card" style="flex: 1 1 180px; min-width: 160px; max-width: 220px; background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%); color: #333; text-align: center; border-radius: 12px; margin: 0.5vw 0;">
+                <div class="stat-value" style="font-size: 2.2rem; font-weight: bold; margin-top: 1vw;"><?php echo $level_counts['Low']; ?></div>
+                <div class="stat-label" style="font-size: 1.1rem; margin-bottom: 1vw;">Low Transporters</div>
             </div>
         </div>
 
@@ -142,7 +156,7 @@ foreach ($pet_summary as $record) {
                                 <th style="padding: 1rem; text-align: left;">PHN</th>
                                 <th style="padding: 1rem; text-align: left;">Clinic</th>
                                 <th style="padding: 1rem; text-align: left;">Latest Test Date</th>
-                                <th style="padding: 1rem; text-align: left;">Current PET Level</th>
+                                <th style="padding: 1rem; text-align: center;">Current PET Level</th>
                                 <th style="padding: 1rem; text-align: center;">D/P Creatinine</th>
                                 <th style="padding: 1rem; text-align: center;">D/D0 Glucose</th>
                                 <th style="padding: 1rem; text-align: center;">Ultrafiltration</th>
@@ -165,7 +179,7 @@ foreach ($pet_summary as $record) {
                                         <?php echo $record['clinic_number'] ? '<span style="background: #e3f2fd; color: #1565c0; padding: 0.3rem 0.6rem; border-radius: 4px; font-weight: 500; font-size: 0.85rem;">' . htmlspecialchars($record['clinic_number']) . '</span>' : '<span style="color: #999;">-</span>'; ?>
                                     </td>
                                     <td style="padding: 1rem; font-weight: 600;"><?php echo date('M j, Y', strtotime($record['test_date'])); ?></td>
-                                    <td style="padding: 1rem;">
+                                    <td style="padding: 1rem; text-align: center;">
                                         <?php 
                                         $level_colors = [
                                             'High' => 'background: #ffebee; color: #c62828;',
@@ -175,9 +189,17 @@ foreach ($pet_summary as $record) {
                                         ];
                                         $style = $level_colors[$record['pet_level']] ?? 'background: #f5f5f5; color: #666;';
                                         ?>
-                                        <span style="<?php echo $style; ?> padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; white-space: nowrap;">
+                                        <span style="<?php echo $style; ?> padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; white-space: nowrap; display: inline-block;">
                                             <?php echo htmlspecialchars($record['pet_level']); ?>
                                         </span>
+                                           <?php if (!empty($record['pd_status'])): ?>
+                                               <?php
+                                                   $pdColor = ($record['pd_status'] === 'CAPD') ? '#218838' : (($record['pd_status'] === 'APD') ? '#1565c0' : '#888');
+                                               ?>
+                                               <div style="margin-top: 0.25rem; font-weight: bold; font-size: 0.82em; color: <?php echo $pdColor; ?>; text-align: center;">
+                                                   <?php echo htmlspecialchars($record['pd_status']); ?>
+                                               </div>
+                                           <?php endif; ?>
                                     </td>
                                     <td style="padding: 1rem; text-align: center; font-family: monospace; font-weight: 600;">
                                         <?php echo $record['d_p_creatinine'] ? number_format($record['d_p_creatinine'], 2) : '<span style="color: #999;">-</span>'; ?>

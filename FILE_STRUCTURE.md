@@ -1,4 +1,4 @@
-# Hospital Patient Management System - Complete File Structure
+# Woard & Clinic Management System - Complete File Structure
 
 ## Project Root: `d:\SW\Projects\CHHMS\`
 
